@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Qui, parmi nous ?</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    min-height: 100vh;
+    font-family: 'Manrope', sans-serif;
+    background: radial-gradient(circle at 20% 0%, #2a1b47 0%, #14101f 55%), #14101f;
+    color: #f7f3ff;
+  }
+  #app-root {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    position: relative;
+    overflow-x: hidden;
+  }
+  .wrap { width: 100%; max-width: 440px; }
+  .display { font-family: 'Baloo 2', sans-serif; }
+
+  .card {
+    background: rgba(36, 27, 54, 0.72);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    border-radius: 24px;
+  }
+  .btn { cursor: pointer; border: none; font-family: 'Manrope', sans-serif; }
+  .btn-primary {
+    background: linear-gradient(135deg, #ff3e8e, #ff8a3e);
+    color: #1a0f10;
+    font-weight: 800;
+    box-shadow: 0 8px 24px rgba(255, 62, 142, 0.35);
+    transition: transform 0.15s ease;
+    border-radius: 16px;
+    padding: 16px;
+    width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: 1.05rem;
+  }
+  .btn-primary:active { transform: scale(0.97); }
+  .btn-primary:disabled { opacity: 0.4; box-shadow: none; cursor: not-allowed; }
+
+  .btn-secondary {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: #f7f3ff;
+    font-weight: 700;
+    border-radius: 16px;
+    padding: 16px;
+    width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: transform 0.15s ease;
+  }
+  .btn-secondary:active { transform: scale(0.97); }
+
+  .btn-link {
+    background: none; border: none; color: #b9a4e8;
+    text-decoration: underline; font-size: 0.75rem; cursor: pointer;
+  }
+
+  .chip-code {
+    font-family: 'Baloo 2', sans-serif;
+    letter-spacing: 0.35em;
+    background: repeating-linear-gradient(135deg, #ffd23f, #ffd23f 10px, #ffc93c 10px, #ffc93c 20px);
+    color: #1a0f10;
+    border-radius: 18px;
+    box-shadow: 0 10px 0 rgba(0,0,0,0.25), 0 16px 30px rgba(255, 210, 63, 0.25);
+    position: relative;
+    padding: 14px 32px;
+    font-size: 1.9rem;
+    font-weight: 800;
+    border: none;
+    display: inline-flex; align-items: center; gap: 12px;
+    cursor: pointer;
+  }
+  .chip-code::before, .chip-code::after {
+    content: '';
+    position: absolute;
+    width: 22px; height: 22px;
+    background: #14101f;
+    border-radius: 999px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .chip-code::before { left: -11px; }
+  .chip-code::after { right: -11px; }
+
+  input[type=text] {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: white;
+    outline: none;
+    font-family: 'Manrope', sans-serif;
+    font-size: 1rem;
+    width: 100%;
+  }
+  input[type=text]:focus { border-color: #ff6fa8; }
+  label.field-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #c3b3e8;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .vote-btn {
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 700;
+    color: #f7f3ff;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.15s ease;
+  }
+  .vote-btn:active { transform: scale(0.98); }
+  .vote-btn.selected { border-color: #3eeac0; background: rgba(62, 234, 192, 0.14); }
+
+  .badge {
+    font-weight: 700;
+    font-size: 0.72rem;
+    border-radius: 999px;
+    padding: 6px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .bar-track { height: 12px; border-radius: 999px; background: rgba(255,255,255,0.05); overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; transition: width 0.6s cubic-bezier(.22,1,.36,1); }
+
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; border-radius: 16px; padding: 12px; cursor: pointer; text-align: left;
+    border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04);
+  }
+  .toggle-row.active { background: rgba(255,62,142,0.14); border-color: rgba(255,62,142,0.4); }
+  .toggle-pill { width: 40px; height: 24px; border-radius: 999px; background: rgba(255,255,255,0.15); position: relative; flex-shrink: 0; transition: background 0.15s ease; }
+  .toggle-pill.active { background: #ff3e8e; }
+  .toggle-knob { width: 18px; height: 18px; border-radius: 999px; background: white; position: absolute; top: 3px; left: 3px; transition: left 0.15s ease; }
+  .toggle-knob.active { left: 19px; }
+
+  @keyframes fall {
+    0% { transform: translateY(-10vh) rotate(0deg); opacity: 0.9; }
+    100% { transform: translateY(110vh) rotate(360deg); opacity: 0.9; }
+  }
+  .confetti-piece {
+    position: fixed; top: -5vh; border-radius: 2px; pointer-events: none;
+    animation-name: fall; animation-timing-function: linear; animation-iteration-count: infinite;
+    z-index: 5;
+  }
+
+  @keyframes pop {
+    0% { transform: scale(0.85); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .pop { animation: pop 0.35s cubic-bezier(.22,1.4,.36,1) both; }
+
+  .spin { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .row { display: flex; }
+  .col { display: flex; flex-direction: column; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .gap-4 { gap: 16px; }
+  .gap-5 { gap: 20px; }
+  .center { align-items: center; justify-content: center; }
+  .between { justify-content: space-between; }
+  .text-center { text-align: center; }
+  .muted { color: #c3b3e8; }
+  .small { font-size: 0.8rem; }
+  .xs { font-size: 0.72rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .confetti-piece { display: none; }
+    .pop { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app-root"></div>
+
+<script>
+/* ---------------------------------- DATA ---------------------------------- */
+
+const QUESTIONS_CLASSIC = [
+  "Qui est le plus susceptible de devenir célèbre ?",
+  "Qui est le plus susceptible d'oublier son propre anniversaire ?",
+  "Qui survivrait le plus longtemps seul sur une île déserte ?",
+  "Qui est le plus susceptible de pleurer devant un dessin animé ?",
+  "Qui est le plus susceptible de finir aux urgences ce soir ?",
+  "Qui est le plus susceptible de mentir pour éviter une soirée ?",
+  "Qui est le plus susceptible de devenir riche grâce à une idée absurde ?",
+  "Qui est le plus susceptible de danser sur la table avant minuit ?",
+  "Qui est le plus susceptible de perdre son téléphone ce soir ?",
+  "Qui est le plus susceptible d'adopter 10 chats ?",
+  "Qui est le plus susceptible de dire une énorme bêtise en public ?",
+  "Qui est le plus susceptible de devenir prof de yoga ?",
+  "Qui est le plus susceptible d'oublier où il a garé sa voiture ?",
+  "Qui est le plus susceptible de gagner à un jeu télévisé ?",
+  "Qui est le plus susceptible de partir vivre à l'étranger sur un coup de tête ?",
+  "Qui est le plus susceptible de s'endormir en premier à une soirée ?",
+  "Qui est le plus susceptible de devenir influenceur ?",
+  "Qui est le plus susceptible de refaire le monde après deux verres ?",
+  "Qui est le plus susceptible de se perdre avec un GPS ?",
+  "Qui est le plus susceptible de faire une blague nulle et d'être le seul à rire ?",
+  "Qui est le plus susceptible de manger la nourriture des autres sans demander ?",
+  "Qui est le plus susceptible de pleurer de rire pour rien ?",
+  "Qui est le plus susceptible d'avoir un jour son propre podcast ?",
+  "Qui est le plus susceptible de organiser la meilleure fête ?",
+  "Qui est le plus susceptible de tout filmer en story ?",
+  "Qui est le plus susceptible de gagner un concours de grimaces ?",
+  "Qui est le plus susceptible de devenir un excellent menteur au poker ?",
+  "Qui est le plus susceptible de casser quelque chose ce soir ?",
+  "Qui est le plus susceptible de partir sans dire au revoir ?",
+  "Qui est le plus susceptible de réussir à convaincre tout le monde de faire un truc absurde ?",
+];
+
+const QUESTIONS_HOT = [
+  "🔥 Qui est le plus susceptible de rentrer accompagné(e) ce soir ?",
+  "🔥 Qui est le plus susceptible d'avoir un plan cul régulier en ce moment ?",
+  "🔥 Qui est le plus susceptible d'avoir déjà trompé quelqu'un ?",
+  "🔥 Qui est le plus susceptible d'avoir le plus gros compteur de partenaires du groupe ?",
+  "🔥 Qui est le plus susceptible d'avoir déjà envoyé une photo un peu chaude à la mauvaise personne ?",
+  "🔥 Qui est le plus susceptible de conclure avec quelqu'un ici ce soir si l'occasion se présente ?",
+  "🔥 Qui est le plus susceptible d'avoir déjà simulé au lit ?",
+  "🔥 Qui est le plus susceptible d'avoir un fantasme bien précis qu'il/elle n'a jamais osé avouer ?",
+  "🔥 Qui est le plus susceptible d'avoir déjà couché avec l'ex de quelqu'un dans la salle ?",
+  "🔥 Qui est le plus susceptible d'être le/la plus doué(e) au lit d'après la rumeur ?",
+  "🔥 Qui est le plus susceptible d'avoir déjà fait un plan à plusieurs ?",
+  "🔥 Qui est le plus susceptible d'avoir un historique de recherche qui ferait rougir tout le monde ?",
+  "🔥 Qui est le plus susceptible d'avoir trompé quelqu'un avec un(e) ami(e) commun(e) ?",
+  "🔥 Qui est le plus susceptible d'avoir déjà eu une aventure avec son/sa patron(ne) ?",
+  "🔥 Qui est le plus susceptible d'avoir déjà eu recours à un site ou une appli de rencontre juste pour un plan d'un soir ?",
+  "🔥 Qui est le plus susceptible d'avoir la libido la plus élevée du groupe ?",
+  "🔥 Qui est le plus susceptible de finir la soirée à rouler une pelle à quelqu'un dans cette pièce ?",
+  "🔥 Qui est le plus susceptible d'avoir déjà eu une bonne frayeur côté MST ?",
+  "🔥 Qui est le plus susceptible d'avoir le sextape le plus embarrassant si ça existait ?",
+  "🔥 Qui est le plus susceptible d'être plus branché coup d'un soir que relation sérieuse ?",
+];
+
+function questionsBirthday(name) {
+  const n = name && name.trim() ? name.trim() : "Julian";
+  return [
+    "🎂 Qui connaît le mieux " + n + " ?",
+    "🎂 Qui est le plus susceptible d'offrir le cadeau le plus raté à " + n + " ?",
+    "🎂 Qui va faire pleurer " + n + " de rire ce soir ?",
+    "🎂 Qui est le/la meilleur(e) ami(e) de " + n + " dans la salle ?",
+    "🎂 Qui va faire le discours le plus embarrassant pour " + n + " ?",
+    "🎂 Qui connaît un secret un peu honteux de " + n + " ?",
+    "🎂 Qui va finir la soirée à porter " + n + " sur ses épaules ?",
+    "🎂 Qui est le plus susceptible d'avoir organisé une surprise pour " + n + " ?",
+    "🎂 Qui a la meilleure anecdote embarrassante sur " + n + " ?",
+    "🎂 Qui va offrir le cadeau le plus original à " + n + " ?",
+    "🎂 Qui est le plus susceptible de faire un câlin à " + n + " en premier ce soir ?",
+    "🎂 Qui va porter un toast pour " + n + " avant la fin de la soirée ?",
+  ];
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+function buildPool(opts) {
+  let pool = QUESTIONS_CLASSIC.slice();
+  if (opts.hotMode) pool = pool.concat(QUESTIONS_HOT);
+  if (opts.birthdayMode) pool = pool.concat(questionsBirthday(opts.birthdayName));
+  return shuffle(pool).slice(0, Math.min(pool.length, 20));
+}
+
+function makeId() {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+function makeCode() {
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  let c = "";
+  for (let i = 0; i < 4; i++) c += letters[Math.floor(Math.random() * letters.length)];
+  return c;
+}
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+/* -------------------------------- STORAGE --------------------------------- */
+
+const NS = "insightparty";
+
+async function storageGet(key) {
+  try {
+    const r = await window.storage.get(key, true);
+    return r ? r.value : null;
+  } catch (e) { return null; }
+}
+async function storageSet(key, value) {
+  try { await window.storage.set(key, value, true); return true; }
+  catch (e) { return false; }
+}
+async function storageList(prefix) {
+  try {
+    const r = await window.storage.list(prefix, true);
+    return r && r.keys ? r.keys : [];
+  } catch (e) { return []; }
+}
+
+async function fetchRoom(code) {
+  const raw = await storageGet(NS + ":" + code + ":state");
+  if (!raw) return null;
+  let state;
+  try { state = JSON.parse(raw); } catch (e) { return null; }
+
+  const playerKeys = await storageList(NS + ":" + code + ":player:");
+  const players = [];
+  for (const k of playerKeys) {
+    const v = await storageGet(k);
+    if (v) { try { players.push(JSON.parse(v)); } catch (e) {} }
+  }
+  players.sort((a, b) => a.joinedAt - b.joinedAt);
+
+  let votes = {};
+  if (state.status === "question" || state.status === "results") {
+    const voteKeys = await storageList(NS + ":" + code + ":vote:" + state.round + ":");
+    for (const k of voteKeys) {
+      const v = await storageGet(k);
+      if (v != null) {
+        const playerId = k.split(":").pop();
+        votes[playerId] = v;
+      }
+    }
+  }
+  return Object.assign({}, state, { players: players, votes: votes });
+}
+
+async function writeState(code, partial) {
+  const raw = await storageGet(NS + ":" + code + ":state");
+  const cur = raw ? JSON.parse(raw) : {};
+  const next = Object.assign({}, cur, partial);
+  await storageSet(NS + ":" + code + ":state", JSON.stringify(next));
+  return next;
+}
+
+/* --------------------------------- STATE ----------------------------------- */
+
+const S = {
+  mode: "home",         // home | create | join
+  code: null,
+  isAdmin: false,
+  myId: makeId(),
+  myName: "",
+  joinCodeInput: "",
+  error: "",
+  busy: false,
+  copied: false,
+  room: null,
+  birthdayNameInput: "Julian",
+  pollTimer: null,
+};
+
+const root = document.getElementById("app-root");
+
+function resetToHome() {
+  clearInterval(S.pollTimer);
+  S.code = null;
+  S.room = null;
+  S.isAdmin = false;
+  S.mode = "home";
+  S.error = "";
+  render();
+}
+
+async function poll() {
+  if (!S.code) return;
+  const r = await fetchRoom(S.code);
+  S.room = r;
+  render();
+}
+
+function startPolling() {
+  clearInterval(S.pollTimer);
+  poll();
+  S.pollTimer = setInterval(poll, 2200);
+}
+
+/* -------------------------------- ACTIONS ----------------------------------- */
+
+async function handleCreate() {
+  if (!S.myName.trim()) { S.error = "Entre ton prénom pour continuer."; render(); return; }
+  S.busy = true; S.error = ""; render();
+  let c = makeCode();
+  let tries = 0;
+  while ((await storageGet(NS + ":" + c + ":state")) && tries < 8) { c = makeCode(); tries++; }
+  const initial = {
+    code: c, hostId: S.myId, hostName: S.myName.trim(),
+    hotMode: false, birthdayMode: false, birthdayName: "Julian",
+    status: "lobby", questions: [], round: 0, createdAt: Date.now(),
+  };
+  await storageSet(NS + ":" + c + ":state", JSON.stringify(initial));
+  await storageSet(NS + ":" + c + ":player:" + S.myId, JSON.stringify({ id: S.myId, name: S.myName.trim(), joinedAt: Date.now() }));
+  S.isAdmin = true; S.code = c; S.busy = false;
+  render();
+  startPolling();
+}
+
+async function handleJoin() {
+  const c = S.joinCodeInput.trim().toUpperCase();
+  if (!S.myName.trim()) { S.error = "Entre ton prénom pour continuer."; render(); return; }
+  if (c.length !== 4) { S.error = "Le code fait 4 lettres."; render(); return; }
+  S.busy = true; S.error = ""; render();
+  const existing = await fetchRoom(c);
+  if (!existing) { S.error = "Ce code ne correspond à aucune partie en cours."; S.busy = false; render(); return; }
+  await storageSet(NS + ":" + c + ":player:" + S.myId, JSON.stringify({ id: S.myId, name: S.myName.trim(), joinedAt: Date.now() }));
+  S.isAdmin = false; S.code = c; S.busy = false;
+  render();
+  startPolling();
+}
+
+async function handleStartGame() {
+  if (!S.room) return;
+  S.busy = true; render();
+  const questions = buildPool({ hotMode: S.room.hotMode, birthdayMode: S.room.birthdayMode, birthdayName: S.room.birthdayName });
+  const next = await writeState(S.code, { status: "question", round: 0, questions: questions });
+  S.room = Object.assign({}, S.room, next);
+  S.busy = false;
+  render();
+}
+
+async function toggleMode(key) {
+  if (!S.room) return;
+  const next = await writeState(S.code, { [key]: !S.room[key] });
+  S.room = Object.assign({}, S.room, next);
+  render();
+}
+
+async function saveBirthdayName() {
+  const next = await writeState(S.code, { birthdayName: S.birthdayNameInput || "Julian" });
+  S.room = Object.assign({}, S.room, next);
+  render();
+}
+
+async function handleVote(targetId) {
+  if (!S.room) return;
+  await storageSet(NS + ":" + S.code + ":vote:" + S.room.round + ":" + S.myId, targetId);
+  S.room = Object.assign({}, S.room, { votes: Object.assign({}, S.room.votes || {}, { [S.myId]: targetId }) });
+  render();
+}
+
+async function handleReveal() {
+  const next = await writeState(S.code, { status: "results" });
+  S.room = Object.assign({}, S.room, next);
+  render();
+}
+
+async function handleNextQuestion() {
+  if (!S.room) return;
+  const nextRound = S.room.round + 1;
+  if (nextRound >= S.room.questions.length) {
+    const next = await writeState(S.code, { status: "ended" });
+    S.room = Object.assign({}, S.room, next);
+  } else {
+    const next = await writeState(S.code, { status: "question", round: nextRound });
+    S.room = Object.assign({}, S.room, next, { votes: {} });
+  }
+  render();
+}
+
+async function handleRestart() {
+  const next = await writeState(S.code, { status: "lobby", round: 0, questions: [] });
+  S.room = Object.assign({}, S.room, next, { votes: {} });
+  render();
+}
+
+function copyCode() {
+  if (!S.code) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(S.code).then(() => {
+      S.copied = true; render();
+      setTimeout(() => { S.copied = false; render(); }, 1500);
+    });
+  }
+}
+
+/* -------------------------------- CONFETTI ---------------------------------- */
+
+let confettiPieces = null;
+function confettiHtml(active) {
+  if (!active) return "";
+  if (!confettiPieces) {
+    const colors = ["#ff3e8e", "#ffd23f", "#3eeac0", "#ff8a3e", "#a78bfa"];
+    confettiPieces = Array.from({ length: 26 }).map((_, i) => ({
+      left: Math.random() * 100,
+      size: 6 + Math.random() * 8,
+      color: colors[i % colors.length],
+      duration: 4 + Math.random() * 4,
+      delay: Math.random() * 6,
+    }));
+  }
+  return confettiPieces.map(p =>
+    '<div class="confetti-piece" style="left:' + p.left + '%;width:' + p.size + 'px;height:' + (p.size * 0.5) + 'px;background:' + p.color + ';animation-duration:' + p.duration + 's;animation-delay:' + p.delay + 's;"></div>'
+  ).join("");
+}
+
+/* --------------------------------- RENDER ----------------------------------- */
+
+function render() {
+  const birthdayActive = S.room && S.room.birthdayMode;
+  let inner = confettiHtml(birthdayActive);
+  inner += '<div class="wrap">';
+
+  if (!S.code && S.mode === "home") inner += homeScreen();
+  else if (!S.code && S.mode === "create") inner += nameEntryScreen("Créer une partie", "Tu seras l'animateur·rice de la soirée.", "Créer le salon", "create");
+  else if (!S.code && S.mode === "join") inner += joinScreen();
+  else if (S.code && !S.room) inner += loadingScreen();
+  else if (S.code && S.room && S.room.status === "lobby") inner += lobbyScreen();
+  else if (S.code && S.room && S.room.status === "question") inner += questionScreen();
+  else if (S.code && S.room && S.room.status === "results") inner += resultsScreen();
+  else if (S.code && S.room && S.room.status === "ended") inner += endScreen();
+
+  inner += '</div>';
+  root.innerHTML = inner;
+  bindEvents();
+}
+
+function homeScreen() {
+  return (
+    '<div class="col gap-4 pop" style="align-items:center;">' +
+      '<div class="col gap-3 text-center" style="align-items:center;">' +
+        '<div class="row gap-2" style="align-items:center;">' +
+          '<span style="font-size:1.6rem;">🎉</span>' +
+          '<h1 class="display" style="font-size:2.2rem;font-weight:800;margin:0;">Qui, parmi nous ?</h1>' +
+        '</div>' +
+        '<p class="muted small" style="max-width:320px;">Le jeu de soirée où on découvre ce que le groupe pense vraiment de chacun. Un salon, un code, tous les téléphones connectés.</p>' +
+      '</div>' +
+      '<div class="card col gap-3" style="padding:24px;width:100%;">' +
+        '<button class="btn btn-primary" id="btn-create"><span class="display">Créer une partie</span> 👑</button>' +
+        '<button class="btn btn-secondary" id="btn-join"><span class="display">Rejoindre avec un code</span> 👥</button>' +
+      '</div>' +
+      '<p class="xs muted text-center" style="max-width:320px;">Un joueur crée la partie et devient l\'animateur·rice. Les autres rejoignent depuis leur téléphone avec le code affiché.</p>' +
+    '</div>'
+  );
+}
+
+function nameEntryScreen(title, subtitle, ctaLabel) {
+  return (
+    '<div class="card col gap-4 pop" style="padding:24px;">' +
+      '<button class="btn-link" id="btn-back" style="width:fit-content;">← Retour</button>' +
+      '<div><h2 class="display" style="font-size:1.5rem;font-weight:700;margin:0;">' + title + '</h2><p class="muted small" style="margin:4px 0 0;">' + subtitle + '</p></div>' +
+      '<div><label class="field-label">Ton prénom</label><input type="text" id="input-name" placeholder="Ex : Camille" maxlength="20" value="' + escapeHtml(S.myName) + '" /></div>' +
+      (S.error ? '<p class="small" style="color:#ff9ec9;margin:0;">' + escapeHtml(S.error) + '</p>' : '') +
+      '<button class="btn btn-primary" id="btn-submit-create" ' + (S.busy ? 'disabled' : '') + '>' + (S.busy ? '<span class="spin">⏳</span>' : '<span class="display">' + ctaLabel + '</span>') + '</button>' +
+    '</div>'
+  );
+}
+
+function joinScreen() {
+  return (
+    '<div class="card col gap-4 pop" style="padding:24px;">' +
+      '<button class="btn-link" id="btn-back" style="width:fit-content;">← Retour</button>' +
+      '<div><h2 class="display" style="font-size:1.5rem;font-weight:700;margin:0;">Rejoindre une partie</h2><p class="muted small" style="margin:4px 0 0;">Demande le code à l\'animateur·rice.</p></div>' +
+      '<div><label class="field-label">Code du salon</label><input type="text" id="input-code" placeholder="EX : ABCD" maxlength="4" value="' + escapeHtml(S.joinCodeInput) + '" style="font-family:\'Baloo 2\',sans-serif;font-size:1.4rem;letter-spacing:0.3em;text-align:center;" /></div>' +
+      '<div><label class="field-label">Ton prénom</label><input type="text" id="input-name-join" placeholder="Ex : Camille" maxlength="20" value="' + escapeHtml(S.myName) + '" /></div>' +
+      (S.error ? '<p class="small" style="color:#ff9ec9;margin:0;">' + escapeHtml(S.error) + '</p>' : '') +
+      '<button class="btn btn-primary" id="btn-submit-join" ' + (S.busy ? 'disabled' : '') + '>' + (S.busy ? '<span class="spin">⏳</span>' : '<span class="display">Rejoindre</span>') + '</button>' +
+    '</div>'
+  );
+}
+
+function loadingScreen() {
+  return '<div class="card col gap-3 pop text-center" style="padding:32px;align-items:center;"><span class="spin" style="font-size:1.6rem;">⏳</span><p class="small muted">Connexion au salon ' + escapeHtml(S.code) + '…</p></div>';
+}
+
+function lobbyScreen() {
+  const room = S.room;
+  const canStart = room.players.length >= 2;
+  let html = '<div class="col gap-4 pop">';
+
+  html += '<div class="col gap-2" style="align-items:center;">';
+  html += '<span class="xs muted" style="text-transform:uppercase;letter-spacing:0.15em;">Code du salon</span>';
+  html += '<button class="chip-code" id="btn-copy">' + S.code + ' ' + (S.copied ? '✅' : '📋') + '</button>';
+  html += '<p class="xs muted">Touchez le code pour le copier</p>';
+  html += '</div>';
+
+  html += '<div class="card col gap-3" style="padding:20px;">';
+  html += '<div class="row gap-2" style="align-items:center;"><span>👥</span><h3 class="display" style="margin:0;font-weight:700;">' + room.players.length + ' joueur(s)</h3></div>';
+  html += '<div class="row gap-2" style="flex-wrap:wrap;">';
+  room.players.forEach(p => {
+    const isHost = p.id === room.hostId;
+    html += '<span class="badge" style="background:' + (isHost ? 'rgba(255,210,63,0.16)' : 'rgba(255,255,255,0.07)') + ';">' + (isHost ? '👑 ' : '') + escapeHtml(p.name) + (p.id === S.myId ? ' (toi)' : '') + '</span>';
+  });
+  html += '</div>';
+  if (!canStart) html += '<p class="xs muted">Il faut au moins 2 joueurs pour commencer.</p>';
+  html += '</div>';
+
+  if (S.isAdmin) {
+    html += '<div class="card col gap-4" style="padding:20px;">';
+    html += '<h3 class="display xs muted" style="text-transform:uppercase;letter-spacing:0.05em;margin:0;">Réglages de la partie</h3>';
+
+    html += '<button class="toggle-row ' + (room.hotMode ? 'active' : '') + '" id="toggle-hot">' +
+      '<div class="row gap-3" style="align-items:center;"><span>🔥</span><div><p style="margin:0;font-weight:700;font-size:0.9rem;">Mode Hot</p><p class="xs muted" style="margin:0;">Des questions plus osées et coquines.</p></div></div>' +
+      '<div class="toggle-pill ' + (room.hotMode ? 'active' : '') + '"><div class="toggle-knob ' + (room.hotMode ? 'active' : '') + '"></div></div>' +
+      '</button>';
+
+    html += '<button class="toggle-row ' + (room.birthdayMode ? 'active' : '') + '" id="toggle-birthday">' +
+      '<div class="row gap-3" style="align-items:center;"><span>🎂</span><div><p style="margin:0;font-weight:700;font-size:0.9rem;">Édition anniversaire</p><p class="xs muted" style="margin:0;">Des questions spéciales pour la personne fêtée.</p></div></div>' +
+      '<div class="toggle-pill ' + (room.birthdayMode ? 'active' : '') + '"><div class="toggle-knob ' + (room.birthdayMode ? 'active' : '') + '"></div></div>' +
+      '</button>';
+
+    if (room.birthdayMode) {
+      html += '<div class="col gap-2">';
+      html += '<label class="field-label">Prénom de la personne fêtée</label>';
+      html += '<div class="row gap-2"><input type="text" id="input-birthday-name" value="' + escapeHtml(S.birthdayNameInput) + '" style="flex:1;" /><button class="btn btn-secondary" id="btn-save-birthday-name" style="width:auto;padding:12px 16px;">OK</button></div>';
+      html += '<p class="display text-center" style="color:#ffd23f;font-size:1.2rem;margin:4px 0 0;">🎉 Joyeux anniversaire ' + escapeHtml(room.birthdayName || "Julian") + ' 🎉</p>';
+      html += '</div>';
+    }
+
+    html += '<button class="btn btn-primary" id="btn-start" ' + (!canStart || S.busy ? 'disabled' : '') + '>' + (S.busy ? '<span class="spin">⏳</span>' : '<span class="display">Lancer la partie</span> →') + '</button>';
+    html += '</div>';
+  } else {
+    html += '<div class="card col gap-2 text-center" style="padding:24px;align-items:center;"><span>✨</span><p class="small muted">En attente que <strong>' + escapeHtml(room.hostName) + '</strong> lance la partie…</p></div>';
+  }
+
+  html += '<button class="btn-link" id="btn-leave" style="align-self:center;">Quitter le salon</button>';
+  html += '</div>';
+  return html;
+}
+
+function questionScreen() {
+  const room = S.room;
+  const question = room.questions[room.round];
+  const votedCount = Object.keys(room.votes || {}).length;
+  const totalPlayers = room.players.length;
+  const myVote = (room.votes || {})[S.myId];
+
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="row between xs muted"><span>Question ' + (room.round + 1) + ' / ' + room.questions.length + '</span><span>' + votedCount + ' / ' + totalPlayers + ' ont voté</span></div>';
+  html += '<div class="card text-center" style="padding:24px;"><p class="display" style="font-size:1.4rem;font-weight:700;margin:0;line-height:1.3;">' + escapeHtml(question) + '</p></div>';
+
+  html += '<div class="col gap-2">';
+  room.players.forEach(p => {
+    html += '<button class="vote-btn ' + (myVote === p.id ? 'selected' : '') + '" data-vote-id="' + p.id + '">' + escapeHtml(p.name) + '</button>';
+  });
+  html += '</div>';
+
+  if (S.isAdmin) {
+    html += '<button class="btn btn-primary" id="btn-reveal"><span class="display">Voir les résultats</span> 🏆</button>';
+  } else {
+    html += '<p class="text-center xs muted">' + (myVote ? "Vote enregistré, en attente des autres…" : "Touche un prénom pour voter.") + '</p>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function resultsScreen() {
+  const room = S.room;
+  const question = room.questions[room.round];
+  const counts = {};
+  Object.values(room.votes || {}).forEach(targetId => { counts[targetId] = (counts[targetId] || 0) + 1; });
+  const nameOf = (id) => { const p = room.players.find(p => p.id === id); return p ? p.name : "?"; };
+  const maxCount = Math.max(1, ...Object.values(counts));
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const isLast = room.round + 1 >= room.questions.length;
+
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="card text-center" style="padding:20px;"><p class="small muted" style="margin:0;">' + escapeHtml(question) + '</p></div>';
+
+  html += '<div class="card col gap-3" style="padding:20px;">';
+  if (sorted.length === 0) {
+    html += '<p class="text-center small muted">Personne n\'a voté pour cette question.</p>';
+  }
+  sorted.forEach(([targetId, count], i) => {
+    const pct = (count / maxCount) * 100;
+    html += '<div class="col gap-2" style="gap:4px;">';
+    html += '<div class="row between small"><span style="font-weight:700;">' + (i === 0 ? '🏆 ' : '') + escapeHtml(nameOf(targetId)) + '</span><span class="muted">' + count + ' vote' + (count > 1 ? 's' : '') + '</span></div>';
+    html += '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + (i === 0 ? 'linear-gradient(90deg,#ff3e8e,#ffd23f)' : '#3eeac0') + ';"></div></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  html += '<div class="card" style="padding:20px;">';
+  html += '<h4 class="display xs muted" style="text-transform:uppercase;margin:0 0 8px;">Qui a voté pour qui</h4>';
+  html += '<div class="col" style="gap:6px;">';
+  Object.entries(room.votes || {}).forEach(([voterId, targetId]) => {
+    html += '<p class="small" style="margin:0;"><strong>' + escapeHtml(nameOf(voterId)) + '</strong> → ' + escapeHtml(nameOf(targetId)) + '</p>';
+  });
+  html += '</div></div>';
+
+  if (S.isAdmin) {
+    html += '<button class="btn btn-primary" id="btn-next"><span class="display">' + (isLast ? "Terminer la partie" : "Question suivante") + '</span> →</button>';
+  } else {
+    html += '<p class="text-center xs muted">En attente de la suite…</p>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function endScreen() {
+  let html = '<div class="card col gap-3 pop text-center" style="padding:32px;align-items:center;">';
+  html += '<span style="font-size:1.8rem;">🎉</span>';
+  html += '<h2 class="display" style="font-size:1.5rem;font-weight:700;margin:0;">Merci d\'avoir joué !</h2>';
+  html += '<p class="small muted" style="margin:0;">La partie est terminée. Belle soirée à tous 🎉</p>';
+  if (S.isAdmin) {
+    html += '<button class="btn btn-primary" id="btn-restart"><span class="display">Relancer une partie</span></button>';
+  }
+  html += '<button class="btn-link" id="btn-leave-end">Quitter le salon</button>';
+  html += '</div>';
+  return html;
+}
+
+/* -------------------------------- BINDINGS ----------------------------------- */
+
+function bindEvents() {
+  const on = (id, evt, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(evt, fn); };
+
+  on("btn-create", "click", () => { S.mode = "create"; S.error = ""; render(); });
+  on("btn-join", "click", () => { S.mode = "join"; S.error = ""; render(); });
+  on("btn-back", "click", () => { S.mode = "home"; S.error = ""; render(); });
+
+  on("input-name", "input", (e) => { S.myName = e.target.value; });
+  on("input-name", "keydown", (e) => { if (e.key === "Enter") handleCreate(); });
+  on("btn-submit-create", "click", handleCreate);
+
+  on("input-code", "input", (e) => { S.joinCodeInput = e.target.value.toUpperCase().slice(0, 4); });
+  on("input-code", "keydown", (e) => { if (e.key === "Enter") handleJoin(); });
+  on("input-name-join", "input", (e) => { S.myName = e.target.value; });
+  on("input-name-join", "keydown", (e) => { if (e.key === "Enter") handleJoin(); });
+  on("btn-submit-join", "click", handleJoin);
+
+  on("btn-copy", "click", copyCode);
+  on("toggle-hot", "click", () => toggleMode("hotMode"));
+  on("toggle-birthday", "click", () => toggleMode("birthdayMode"));
+  on("input-birthday-name", "input", (e) => { S.birthdayNameInput = e.target.value; });
+  on("btn-save-birthday-name", "click", saveBirthdayName);
+  on("btn-start", "click", handleStartGame);
+  on("btn-leave", "click", resetToHome);
+  on("btn-leave-end", "click", resetToHome);
+
+  document.querySelectorAll("[data-vote-id]").forEach(el => {
+    el.addEventListener("click", () => handleVote(el.getAttribute("data-vote-id")));
+  });
+
+  on("btn-reveal", "click", handleReveal);
+  on("btn-next", "click", handleNextQuestion);
+  on("btn-restart", "click", handleRestart);
+}
+
+render();
+</script>
+</body>
+</html>
