@@ -186,6 +186,11 @@
   .muted { color: #c3b3e8; }
   .small { font-size: 0.8rem; }
   .xs { font-size: 0.72rem; }
+  .conn-dot {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 0.7rem; color: #c3b3e8;
+  }
+  .conn-dot .dot { width: 8px; height: 8px; border-radius: 999px; background: #3eeac0; }
+  .conn-dot.offline .dot { background: #ff5c5c; }
 
   @media (prefers-reduced-motion: reduce) {
     .confetti-piece { display: none; }
@@ -196,7 +201,25 @@
 <body>
 <div id="app-root"></div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import { getDatabase, ref, set, update, get, onValue } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+/* ------------------------------- FIREBASE ---------------------------------- */
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBvKzYSEQl1xLGhYSV4PUcG_vgfmByC5QM",
+  authDomain: "party-340bd.firebaseapp.com",
+  databaseURL: "https://party-340bd-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "party-340bd",
+  storageBucket: "party-340bd.firebasestorage.app",
+  messagingSenderId: "914121044090",
+  appId: "1:914121044090:web:9520babeaf338a71d40bc3"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+
 /* ---------------------------------- DATA ---------------------------------- */
 
 const QUESTIONS_CLASSIC = [
@@ -290,7 +313,7 @@ function buildPool(opts) {
 }
 
 function makeId() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  return "p" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 function makeCode() {
   const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -306,61 +329,44 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;");
 }
 
-/* -------------------------------- STORAGE --------------------------------- */
+/* -------------------------------- FIRESTORE-LIKE HELPERS -------------------- */
 
-const NS = "insightparty";
-
-async function storageGet(key) {
+async function roomExists(code) {
   try {
-    const r = await window.storage.get(key, true);
-    return r ? r.value : null;
-  } catch (e) { return null; }
-}
-async function storageSet(key, value) {
-  try { await window.storage.set(key, value, true); return true; }
-  catch (e) { return false; }
-}
-async function storageList(prefix) {
-  try {
-    const r = await window.storage.list(prefix, true);
-    return r && r.keys ? r.keys : [];
-  } catch (e) { return []; }
-}
-
-async function fetchRoom(code) {
-  const raw = await storageGet(NS + ":" + code + ":state");
-  if (!raw) return null;
-  let state;
-  try { state = JSON.parse(raw); } catch (e) { return null; }
-
-  const playerKeys = await storageList(NS + ":" + code + ":player:");
-  const players = [];
-  for (const k of playerKeys) {
-    const v = await storageGet(k);
-    if (v) { try { players.push(JSON.parse(v)); } catch (e) {} }
+    const snap = await get(ref(db, "rooms/" + code + "/state"));
+    return snap.exists();
+  } catch (e) {
+    return false;
   }
-  players.sort((a, b) => a.joinedAt - b.joinedAt);
+}
 
+async function createRoomInDb(code, initialState, player) {
+  await set(ref(db, "rooms/" + code + "/state"), initialState);
+  await set(ref(db, "rooms/" + code + "/players/" + player.id), player);
+}
+
+async function addPlayer(code, player) {
+  await set(ref(db, "rooms/" + code + "/players/" + player.id), player);
+}
+
+async function updateRoomState(code, partial) {
+  await update(ref(db, "rooms/" + code + "/state"), partial);
+}
+
+async function submitVote(code, round, playerId, targetId) {
+  await set(ref(db, "rooms/" + code + "/votes/" + round + "/" + playerId), targetId);
+}
+
+function buildRoomFromVal(val) {
+  if (!val || !val.state) return null;
+  const state = val.state;
+  const playersObj = val.players || {};
+  const players = Object.values(playersObj).sort((a, b) => a.joinedAt - b.joinedAt);
   let votes = {};
   if (state.status === "question" || state.status === "results") {
-    const voteKeys = await storageList(NS + ":" + code + ":vote:" + state.round + ":");
-    for (const k of voteKeys) {
-      const v = await storageGet(k);
-      if (v != null) {
-        const playerId = k.split(":").pop();
-        votes[playerId] = v;
-      }
-    }
+    votes = (val.votes && val.votes[state.round]) || {};
   }
   return Object.assign({}, state, { players: players, votes: votes });
-}
-
-async function writeState(code, partial) {
-  const raw = await storageGet(NS + ":" + code + ":state");
-  const cur = raw ? JSON.parse(raw) : {};
-  const next = Object.assign({}, cur, partial);
-  await storageSet(NS + ":" + code + ":state", JSON.stringify(next));
-  return next;
 }
 
 /* --------------------------------- STATE ----------------------------------- */
@@ -377,13 +383,14 @@ const S = {
   copied: false,
   room: null,
   birthdayNameInput: "Julian",
-  pollTimer: null,
+  unsub: null,
+  connected: true,
 };
 
 const root = document.getElementById("app-root");
 
 function resetToHome() {
-  clearInterval(S.pollTimer);
+  if (S.unsub) { S.unsub(); S.unsub = null; }
   S.code = null;
   S.room = null;
   S.isAdmin = false;
@@ -392,17 +399,21 @@ function resetToHome() {
   render();
 }
 
-async function poll() {
-  if (!S.code) return;
-  const r = await fetchRoom(S.code);
-  S.room = r;
-  render();
-}
-
-function startPolling() {
-  clearInterval(S.pollTimer);
-  poll();
-  S.pollTimer = setInterval(poll, 2200);
+function startListening(code) {
+  if (S.unsub) { S.unsub(); S.unsub = null; }
+  S.connected = true;
+  S.unsub = onValue(
+    ref(db, "rooms/" + code),
+    (snapshot) => {
+      S.connected = true;
+      S.room = buildRoomFromVal(snapshot.val());
+      render();
+    },
+    (err) => {
+      S.connected = false;
+      render();
+    }
+  );
 }
 
 /* -------------------------------- ACTIONS ----------------------------------- */
@@ -412,17 +423,24 @@ async function handleCreate() {
   S.busy = true; S.error = ""; render();
   let c = makeCode();
   let tries = 0;
-  while ((await storageGet(NS + ":" + c + ":state")) && tries < 8) { c = makeCode(); tries++; }
+  while ((await roomExists(c)) && tries < 8) { c = makeCode(); tries++; }
   const initial = {
     code: c, hostId: S.myId, hostName: S.myName.trim(),
     hotMode: false, birthdayMode: false, birthdayName: "Julian",
     status: "lobby", questions: [], round: 0, createdAt: Date.now(),
   };
-  await storageSet(NS + ":" + c + ":state", JSON.stringify(initial));
-  await storageSet(NS + ":" + c + ":player:" + S.myId, JSON.stringify({ id: S.myId, name: S.myName.trim(), joinedAt: Date.now() }));
+  const player = { id: S.myId, name: S.myName.trim(), joinedAt: Date.now() };
+  try {
+    await createRoomInDb(c, initial, player);
+  } catch (e) {
+    S.busy = false;
+    S.error = "Impossible de créer le salon. Vérifie ta connexion et réessaie.";
+    render();
+    return;
+  }
   S.isAdmin = true; S.code = c; S.busy = false;
   render();
-  startPolling();
+  startListening(c);
 }
 
 async function handleJoin() {
@@ -430,67 +448,59 @@ async function handleJoin() {
   if (!S.myName.trim()) { S.error = "Entre ton prénom pour continuer."; render(); return; }
   if (c.length !== 4) { S.error = "Le code fait 4 lettres."; render(); return; }
   S.busy = true; S.error = ""; render();
-  const existing = await fetchRoom(c);
-  if (!existing) { S.error = "Ce code ne correspond à aucune partie en cours."; S.busy = false; render(); return; }
-  await storageSet(NS + ":" + c + ":player:" + S.myId, JSON.stringify({ id: S.myId, name: S.myName.trim(), joinedAt: Date.now() }));
+  const exists = await roomExists(c);
+  if (!exists) { S.error = "Ce code ne correspond à aucune partie en cours."; S.busy = false; render(); return; }
+  try {
+    await addPlayer(c, { id: S.myId, name: S.myName.trim(), joinedAt: Date.now() });
+  } catch (e) {
+    S.busy = false;
+    S.error = "Impossible de rejoindre le salon. Vérifie ta connexion et réessaie.";
+    render();
+    return;
+  }
   S.isAdmin = false; S.code = c; S.busy = false;
   render();
-  startPolling();
+  startListening(c);
 }
 
 async function handleStartGame() {
   if (!S.room) return;
   S.busy = true; render();
   const questions = buildPool({ hotMode: S.room.hotMode, birthdayMode: S.room.birthdayMode, birthdayName: S.room.birthdayName });
-  const next = await writeState(S.code, { status: "question", round: 0, questions: questions });
-  S.room = Object.assign({}, S.room, next);
+  await updateRoomState(S.code, { status: "question", round: 0, questions: questions });
   S.busy = false;
-  render();
 }
 
 async function toggleMode(key) {
   if (!S.room) return;
-  const next = await writeState(S.code, { [key]: !S.room[key] });
-  S.room = Object.assign({}, S.room, next);
-  render();
+  await updateRoomState(S.code, { [key]: !S.room[key] });
 }
 
 async function saveBirthdayName() {
-  const next = await writeState(S.code, { birthdayName: S.birthdayNameInput || "Julian" });
-  S.room = Object.assign({}, S.room, next);
-  render();
+  await updateRoomState(S.code, { birthdayName: S.birthdayNameInput || "Julian" });
 }
 
 async function handleVote(targetId) {
   if (!S.room) return;
-  await storageSet(NS + ":" + S.code + ":vote:" + S.room.round + ":" + S.myId, targetId);
-  S.room = Object.assign({}, S.room, { votes: Object.assign({}, S.room.votes || {}, { [S.myId]: targetId }) });
-  render();
+  await submitVote(S.code, S.room.round, S.myId, targetId);
 }
 
 async function handleReveal() {
-  const next = await writeState(S.code, { status: "results" });
-  S.room = Object.assign({}, S.room, next);
-  render();
+  await updateRoomState(S.code, { status: "results" });
 }
 
 async function handleNextQuestion() {
   if (!S.room) return;
   const nextRound = S.room.round + 1;
   if (nextRound >= S.room.questions.length) {
-    const next = await writeState(S.code, { status: "ended" });
-    S.room = Object.assign({}, S.room, next);
+    await updateRoomState(S.code, { status: "ended" });
   } else {
-    const next = await writeState(S.code, { status: "question", round: nextRound });
-    S.room = Object.assign({}, S.room, next, { votes: {} });
+    await updateRoomState(S.code, { status: "question", round: nextRound });
   }
-  render();
 }
 
 async function handleRestart() {
-  const next = await writeState(S.code, { status: "lobby", round: 0, questions: [] });
-  S.room = Object.assign({}, S.room, next, { votes: {} });
-  render();
+  await updateRoomState(S.code, { status: "lobby", round: 0, questions: [] });
 }
 
 function copyCode() {
@@ -529,6 +539,10 @@ function render() {
   const birthdayActive = S.room && S.room.birthdayMode;
   let inner = confettiHtml(birthdayActive);
   inner += '<div class="wrap">';
+
+  if (!S.connected && S.code) {
+    inner += '<div class="conn-dot offline" style="margin-bottom:10px;justify-content:center;display:flex;"><span class="dot"></span> Connexion perdue, nouvelle tentative…</div>';
+  }
 
   if (!S.code && S.mode === "home") inner += homeScreen();
   else if (!S.code && S.mode === "create") inner += nameEntryScreen("Créer une partie", "Tu seras l'animateur·rice de la soirée.", "Créer le salon", "create");
