@@ -130,6 +130,7 @@
   }
   .vote-btn:active { transform: scale(0.98); }
   .vote-btn.selected { border-color: #3eeac0; background: rgba(62, 234, 192, 0.14); }
+  .vote-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .badge {
     font-weight: 700;
@@ -148,12 +149,72 @@
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px; border-radius: 16px; padding: 12px; cursor: pointer; text-align: left;
     border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04);
+    width: 100%;
   }
   .toggle-row.active { background: rgba(255,62,142,0.14); border-color: rgba(255,62,142,0.4); }
   .toggle-pill { width: 40px; height: 24px; border-radius: 999px; background: rgba(255,255,255,0.15); position: relative; flex-shrink: 0; transition: background 0.15s ease; }
   .toggle-pill.active { background: #ff3e8e; }
   .toggle-knob { width: 18px; height: 18px; border-radius: 999px; background: white; position: absolute; top: 3px; left: 3px; transition: left 0.15s ease; }
   .toggle-knob.active { left: 19px; }
+
+  .big-card {
+    padding: 28px 20px;
+    text-align: center;
+  }
+  .big-card p.display {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.3;
+  }
+
+  .duel-vs {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+  }
+  .duel-name-card {
+    flex: 1;
+    border-radius: 18px;
+    padding: 18px 10px;
+    text-align: center;
+    font-weight: 800;
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 1.1rem;
+    border: 2px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    cursor: pointer;
+  }
+  .duel-name-card.selected { border-color: #3eeac0; background: rgba(62,234,192,0.14); }
+  .duel-name-card.static { cursor: default; }
+  .duel-vs-label { font-family: 'Baloo 2', sans-serif; font-size: 1.3rem; color: #ffd23f; }
+
+  .photo-frame {
+    width: 100%;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+    aspect-ratio: 1 / 1;
+  }
+  .photo-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .coco-answer-card {
+    border-radius: 16px;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(255,255,255,0.12);
+    font-weight: 600;
+    cursor: default;
+  }
+  .coco-answer-card.clickable { cursor: pointer; }
+  .coco-answer-card.clickable:active { transform: scale(0.98); }
+  .coco-answer-card.winner { border-color: #ffd23f; background: rgba(255,210,63,0.14); }
+
+  .scoreboard-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .scoreboard-row:last-child { border-bottom: none; }
 
   @keyframes fall {
     0% { transform: translateY(-10vh) rotate(0deg); opacity: 0.9; }
@@ -296,6 +357,100 @@ function questionsBirthday(name) {
   ];
 }
 
+const TRUTH_QUESTIONS = [
+  "Quel est le mensonge que tu racontes le plus souvent ?",
+  "Quelle est la chose la plus gênante que tu aies faite ce mois-ci ?",
+  "Qui dans cette pièce tu trouves le plus intéressant et pourquoi ?",
+  "Quel est ton pire souvenir de soirée ?",
+  "Quelle est la chose que tu regrettes le plus d'avoir dite à quelqu'un ici ?",
+  "Si tu devais échanger de vie avec quelqu'un dans la salle, qui choisirais-tu ?",
+  "Quel est ton plus grand complexe ?",
+  "Quelle appli tu utilises alors que tu ne devrais pas l'avouer ?",
+  "Quelle est la pire chose que tu aies faite pour éviter quelqu'un ?",
+  "Décris ta pire tenue vestimentaire d'ado.",
+];
+const TRUTH_QUESTIONS_HOT = [
+  "Qui dans la salle embrasserais-tu si tu devais en choisir un(e) ?",
+  "Quelle est ta pire expérience amoureuse ?",
+  "As-tu déjà eu le béguin pour quelqu'un ici ? Qui ?",
+  "Quel est ton fantasme le plus assumé ?",
+  "Quelle est la chose la plus osée que tu aies faite pour séduire quelqu'un ?",
+  "Combien de personnes as-tu embrassées dans ta vie (estimation) ?",
+  "Quel est ton pire date de tous les temps ?",
+  "As-tu déjà menti sur ton nombre de partenaires ?",
+];
+
+const DARE_CHALLENGES = [
+  "Imite un animal pendant 30 secondes.",
+  "Fais 10 pompes maintenant.",
+  "Parle avec un accent au choix du groupe pendant 2 minutes.",
+  "Envoie un emoji random à un contact au choix du groupe.",
+  "Danse sans musique pendant 20 secondes.",
+  "Laisse quelqu'un du groupe poster un statut à ta place.",
+  "Chante le refrain d'une chanson au hasard.",
+  "Fais une déclaration d'amour théâtrale à un objet de la pièce.",
+  "Raconte une blague, même nulle.",
+  "Laisse le groupe choisir ta prochaine photo de profil pendant 24h.",
+];
+const DARE_CHALLENGES_HOT = [
+  "Fais un compliment sincère à la personne à ta droite.",
+  "Raconte ta pire technique de drague.",
+  "Montre la dernière photo dans ta galerie sans trier.",
+  "Révèle le nom du dernier crush que tu as eu.",
+  "Mime ta pire nuit de sommeil… ou autre chose.",
+  "Raconte ta pire soirée arrosée.",
+  "Fais un massage de 20 secondes à ton/ta voisin(e).",
+];
+
+const NEVER_STATEMENTS = [
+  "Je n'ai jamais menti à mes parents sur où j'étais.",
+  "Je n'ai jamais séché les cours ou le travail sans raison valable.",
+  "Je n'ai jamais pleuré devant un film.",
+  "Je n'ai jamais chanté sous la douche à tue-tête.",
+  "Je n'ai jamais fait semblant d'être malade pour éviter un truc.",
+  "Je n'ai jamais eu une dispute ridicule pour un truc insignifiant.",
+  "Je n'ai jamais oublié l'anniversaire d'un proche.",
+  "Je n'ai jamais eu un gros coup de fatigue au travail.",
+  "Je n'ai jamais eu peur du noir après 10 ans.",
+  "Je n'ai jamais triché à un jeu de société.",
+  "Je n'ai jamais fait semblant d'aimer un cadeau.",
+  "Je n'ai jamais recollé les morceaux d'un objet cassé pour cacher que je l'avais cassé.",
+];
+const NEVER_STATEMENTS_HOT = [
+  "Je n'ai jamais embrassé quelqu'un dans cette pièce.",
+  "Je n'ai jamais eu le cœur brisé.",
+  "Je n'ai jamais menti sur mon âge pour draguer.",
+  "Je n'ai jamais trompé quelqu'un.",
+  "Je n'ai jamais eu un coup de foudre pour un(e) ami(e).",
+  "Je n'ai jamais envoyé un message que je regrette à un(e) ex.",
+  "Je n'ai jamais fait un plan d'un soir.",
+  "Je n'ai jamais stalké un(e) ex sur les réseaux sociaux.",
+];
+
+const BLACK_CARDS_COCO = [
+  "Le secret de ma vie sexuelle, c'est ___.",
+  "Ce qui rend une soirée ratée : ___.",
+  "À mon enterrement, je veux qu'on dise ___.",
+  "La pire excuse pour annuler un date : ___.",
+  "Mon pire cauchemar au lit : ___.",
+  "Ce que je ferais pour 1000 € : ___.",
+  "La chose la plus honteuse dans mon historique de recherche : ___.",
+  "Le pire cadeau que je pourrais offrir à mon/ma patron(ne) : ___.",
+  "Ce qui se passe vraiment aux toilettes en soirée : ___.",
+  "La raison pour laquelle je serais viré(e) de mon travail : ___.",
+  "Mon super-pouvoir inutile serait ___.",
+  "Ce qu'il ne faut jamais dire pendant l'amour : ___.",
+];
+
+const GAME_MODES = [
+  { key: "vote", icon: "🗳️", title: "Qui est le plus susceptible…", desc: "Votez pour la personne qui correspond le mieux à chaque question." },
+  { key: "truth_dare", icon: "🎯", title: "Action ou Vérité", desc: "Chacun son tour choisit un défi ou une question piège." },
+  { key: "duel", icon: "⚔️", title: "Duel surprise", desc: "Deux joueurs tirés au sort s'affrontent, le groupe vote le vainqueur." },
+  { key: "never", icon: "🙈", title: "Je n'ai jamais", desc: "Chacun compte ses gages en privé sur son téléphone." },
+  { key: "photo", icon: "📸", title: "Photo Roulette", desc: "Tout le monde envoie une photo, la roulette en révèle une au hasard." },
+  { key: "coco", icon: "🌶️", title: "Blanc-Manger Coco Hot", desc: "Complétez la phrase la plus drôle, le/la juge élit la meilleure." },
+];
+
 function shuffle(arr) {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
@@ -358,7 +513,7 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;");
 }
 
-/* -------------------------------- FIRESTORE-LIKE HELPERS -------------------- */
+/* -------------------------------- FIREBASE HELPERS -------------------------- */
 
 async function roomExists(code) {
   try {
@@ -386,16 +541,31 @@ async function submitVote(code, round, playerId, targetId) {
   await set(ref(db, "rooms/" + code + "/votes/" + round + "/" + playerId), targetId);
 }
 
+const VOTE_LIKE_STATUSES = ["question", "results", "duel_vote", "duel_results"];
+
 function buildRoomFromVal(val) {
   if (!val || !val.state) return null;
   const state = val.state;
   const playersObj = val.players || {};
   const players = Object.values(playersObj).sort((a, b) => a.joinedAt - b.joinedAt);
   let votes = {};
-  if (state.status === "question" || state.status === "results") {
+  if (VOTE_LIKE_STATUSES.indexOf(state.status) !== -1) {
     votes = (val.votes && val.votes[state.round]) || {};
   }
-  return Object.assign({}, state, { players: players, votes: votes });
+  let photos = {};
+  if (state.gameMode === "photo") {
+    photos = (val.photos && val.photos[state.round]) || {};
+  }
+  let cocoAnswers = {};
+  if (state.gameMode === "coco") {
+    cocoAnswers = (val.cocoAnswers && val.cocoAnswers[state.round]) || {};
+  }
+  return Object.assign({}, state, { players: players, votes: votes, photos: photos, cocoAnswers: cocoAnswers });
+}
+
+function playerName(room, id) {
+  const p = room.players.find(p => p.id === id);
+  return p ? p.name : "?";
 }
 
 /* --------------------------------- STATE ----------------------------------- */
@@ -416,6 +586,10 @@ const S = {
   connected: true,
   showManager: false,
   qm: { editingKey: null, editingText: "", newCustomText: "" },
+  myGageCount: 0,
+  myGageAnsweredRound: -1,
+  cocoAnswerInput: "",
+  cocoAnswerInputRound: -1,
 };
 
 const root = document.getElementById("app-root");
@@ -429,6 +603,10 @@ function resetToHome() {
   S.error = "";
   S.showManager = false;
   S.qm = { editingKey: null, editingText: "", newCustomText: "" };
+  S.myGageCount = 0;
+  S.myGageAnsweredRound = -1;
+  S.cocoAnswerInput = "";
+  S.cocoAnswerInputRound = -1;
   render();
 }
 
@@ -449,7 +627,7 @@ function startListening(code) {
   );
 }
 
-/* -------------------------------- ACTIONS ----------------------------------- */
+/* -------------------------------- ACCOUNT ACTIONS ---------------------------- */
 
 async function handleCreate() {
   if (!S.myName.trim()) { S.error = "Entre ton prénom pour continuer."; render(); return; }
@@ -460,6 +638,7 @@ async function handleCreate() {
   const initial = {
     code: c, hostId: S.myId, hostName: S.myName.trim(),
     hotMode: false, birthdayMode: false, birthdayName: "Julian",
+    gameMode: "vote",
     status: "lobby", questions: [], round: 0, createdAt: Date.now(),
   };
   const player = { id: S.myId, name: S.myName.trim(), joinedAt: Date.now() };
@@ -496,21 +675,6 @@ async function handleJoin() {
   startListening(c);
 }
 
-async function handleStartGame() {
-  if (!S.room) return;
-  S.busy = true; S.showManager = false; render();
-  const questions = buildPool({
-    hotMode: S.room.hotMode,
-    birthdayMode: S.room.birthdayMode,
-    birthdayName: S.room.birthdayName,
-    removedDefaults: S.room.removedDefaults,
-    editedDefaults: S.room.editedDefaults,
-    customQuestions: S.room.customQuestions,
-  });
-  await updateRoomState(S.code, { status: "question", round: 0, questions: questions });
-  S.busy = false;
-}
-
 async function toggleMode(key) {
   if (!S.room) return;
   await updateRoomState(S.code, { [key]: !S.room[key] });
@@ -518,6 +682,20 @@ async function toggleMode(key) {
 
 async function saveBirthdayName() {
   await updateRoomState(S.code, { birthdayName: S.birthdayNameInput || "Julian" });
+}
+
+async function selectGameMode(key) {
+  await updateRoomState(S.code, { gameMode: key });
+}
+
+function copyCode() {
+  if (!S.code) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(S.code).then(() => {
+      S.copied = true; render();
+      setTimeout(() => { S.copied = false; render(); }, 1500);
+    });
+  }
 }
 
 /* ------------------------------ QUESTION MANAGER ----------------------------- */
@@ -578,6 +756,16 @@ async function restoreAllDefaults() {
   await updateRoomState(S.code, { removedDefaults: null, editedDefaults: null, customQuestions: null });
 }
 
+/* ------------------------------- VOTE MODE ----------------------------------- */
+
+async function startVoteGame() {
+  const questions = buildPool({
+    hotMode: S.room.hotMode, birthdayMode: S.room.birthdayMode, birthdayName: S.room.birthdayName,
+    removedDefaults: S.room.removedDefaults, editedDefaults: S.room.editedDefaults, customQuestions: S.room.customQuestions,
+  });
+  await updateRoomState(S.code, { status: "question", round: 0, questions: questions });
+}
+
 async function handleVote(targetId) {
   if (!S.room) return;
   await submitVote(S.code, S.room.round, S.myId, targetId);
@@ -597,18 +785,248 @@ async function handleNextQuestion() {
   }
 }
 
-async function handleRestart() {
-  await updateRoomState(S.code, { status: "lobby", round: 0, questions: [] });
+/* ------------------------------ TRUTH OR DARE -------------------------------- */
+
+async function startTruthDare() {
+  const first = S.room.players[0];
+  await updateRoomState(S.code, { status: "td_choose", round: 0, tdCurrentPlayerId: first.id, tdChoice: null, tdText: null });
 }
 
-function copyCode() {
-  if (!S.code) return;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(S.code).then(() => {
-      S.copied = true; render();
-      setTimeout(() => { S.copied = false; render(); }, 1500);
-    });
+function pickTruth() {
+  const pool = TRUTH_QUESTIONS.concat(S.room.hotMode ? TRUTH_QUESTIONS_HOT : []);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+function pickDare() {
+  const pool = DARE_CHALLENGES.concat(S.room.hotMode ? DARE_CHALLENGES_HOT : []);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+async function handleTdChoice(type) {
+  const text = type === "truth" ? pickTruth() : pickDare();
+  await updateRoomState(S.code, { status: "td_reveal", tdChoice: type, tdText: text });
+}
+
+async function handleTdNext() {
+  const nextRound = S.room.round + 1;
+  const players = S.room.players;
+  const nextPlayer = players[nextRound % players.length];
+  await updateRoomState(S.code, { status: "td_choose", round: nextRound, tdCurrentPlayerId: nextPlayer.id, tdChoice: null, tdText: null });
+}
+
+async function handleTdEnd() {
+  await updateRoomState(S.code, { status: "ended" });
+}
+
+/* ---------------------------------- DUEL -------------------------------------- */
+
+function buildDuelPool() {
+  const defaults = effectiveDefaultList({
+    hotMode: S.room.hotMode, birthdayMode: S.room.birthdayMode, birthdayName: S.room.birthdayName,
+    removedDefaults: S.room.removedDefaults, editedDefaults: S.room.editedDefaults,
+  });
+  const customs = S.room.customQuestions ? Object.values(S.room.customQuestions) : [];
+  return shuffle(defaults.concat(customs));
+}
+
+function pickDuelPair(players) {
+  const shuffled = shuffle(players);
+  return [shuffled[0], shuffled[1]];
+}
+
+async function startDuel() {
+  const pool = buildDuelPool();
+  const [a, b] = pickDuelPair(S.room.players);
+  const scores = {};
+  S.room.players.forEach(p => { scores[p.id] = 0; });
+  await updateRoomState(S.code, {
+    status: "duel_vote", round: 0,
+    duelPool: pool, duelA: a.id, duelB: b.id,
+    duelQuestion: pool[0] || "Qui gagnerait ce duel ?",
+    scores: scores,
+  });
+}
+
+async function handleDuelVote(choice) {
+  if (!S.room) return;
+  if (S.myId === S.room.duelA || S.myId === S.room.duelB) return;
+  await submitVote(S.code, S.room.round, S.myId, choice);
+}
+
+async function handleDuelReveal() {
+  const votes = S.room.votes || {};
+  let aCount = 0, bCount = 0;
+  Object.values(votes).forEach(v => { if (v === "a") aCount++; else if (v === "b") bCount++; });
+  const winnerId = aCount >= bCount ? S.room.duelA : S.room.duelB;
+  const currentScore = (S.room.scores && S.room.scores[winnerId]) || 0;
+  await updateRoomState(S.code, { status: "duel_results", ["scores/" + winnerId]: currentScore + 1 });
+}
+
+async function handleDuelNext() {
+  const nextRound = S.room.round + 1;
+  const pool = S.room.duelPool || [];
+  if (nextRound >= pool.length) {
+    await updateRoomState(S.code, { status: "ended" });
+    return;
   }
+  const [a, b] = pickDuelPair(S.room.players);
+  await updateRoomState(S.code, { status: "duel_vote", round: nextRound, duelA: a.id, duelB: b.id, duelQuestion: pool[nextRound] });
+}
+
+/* ------------------------------ NEVER HAVE I EVER ----------------------------- */
+
+async function startNever() {
+  const pool = shuffle(NEVER_STATEMENTS.concat(S.room.hotMode ? NEVER_STATEMENTS_HOT : [])).slice(0, 15);
+  S.myGageCount = 0;
+  S.myGageAnsweredRound = -1;
+  await updateRoomState(S.code, { status: "never_prompt", round: 0, neverStatements: pool });
+}
+
+function handleGageAnswer(hasDone) {
+  if (S.myGageAnsweredRound === S.room.round) return;
+  if (hasDone) S.myGageCount++;
+  S.myGageAnsweredRound = S.room.round;
+  render();
+}
+
+async function handleNeverNext() {
+  const nextRound = S.room.round + 1;
+  if (nextRound >= (S.room.neverStatements || []).length) {
+    await updateRoomState(S.code, { status: "ended" });
+  } else {
+    await updateRoomState(S.code, { status: "never_prompt", round: nextRound });
+  }
+}
+
+/* -------------------------------- PHOTO ROULETTE ------------------------------ */
+
+async function startPhoto() {
+  await updateRoomState(S.code, { status: "photo_wait", round: 0, photoRevealOrder: null, photoRevealIndex: 0, photoRevealShowName: false });
+}
+
+function resizeImageFile(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+        else if (h >= w && h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handlePhotoSelected(file) {
+  if (!file || !S.room) return;
+  S.busy = true; render();
+  try {
+    const dataUrl = await resizeImageFile(file, 480, 0.6);
+    await set(ref(db, "rooms/" + S.code + "/photos/" + S.room.round + "/" + S.myId), dataUrl);
+  } catch (e) {}
+  S.busy = false;
+  render();
+}
+
+async function handleLaunchRoulette() {
+  const photos = S.room.photos || {};
+  const order = shuffle(Object.keys(photos));
+  await updateRoomState(S.code, { status: "photo_reveal", photoRevealOrder: order, photoRevealIndex: 0, photoRevealShowName: false });
+}
+
+async function handlePhotoRevealName() {
+  await updateRoomState(S.code, { photoRevealShowName: true });
+}
+
+async function handlePhotoNext() {
+  const order = S.room.photoRevealOrder || [];
+  const nextIndex = S.room.photoRevealIndex + 1;
+  if (nextIndex >= order.length) {
+    await updateRoomState(S.code, { status: "ended" });
+  } else {
+    await updateRoomState(S.code, { photoRevealIndex: nextIndex, photoRevealShowName: false });
+  }
+}
+
+/* ----------------------------- BLANC-MANGE COCO HOT --------------------------- */
+
+async function startCoco() {
+  const cards = shuffle(BLACK_CARDS_COCO).slice(0, 12);
+  const scores = {};
+  S.room.players.forEach(p => { scores[p.id] = 0; });
+  await updateRoomState(S.code, {
+    status: "coco_submit", round: 0, cocoCards: cards, cocoJudgeId: S.room.players[0].id,
+    cocoWinnerId: null, cocoVoteOrder: null, scores: scores,
+  });
+}
+
+function isJudge() {
+  return S.room && S.myId === S.room.cocoJudgeId;
+}
+
+async function submitCocoAnswer() {
+  const text = S.cocoAnswerInput.trim();
+  if (!text || !S.room) return;
+  await set(ref(db, "rooms/" + S.code + "/cocoAnswers/" + S.room.round + "/" + S.myId), text);
+  S.cocoAnswerInput = "";
+  render();
+}
+
+async function handleCocoShowAnswers() {
+  const order = shuffle(Object.keys(S.room.cocoAnswers || {}));
+  await updateRoomState(S.code, { status: "coco_vote", cocoVoteOrder: order });
+}
+
+async function handleCocoPick(playerId) {
+  const currentScore = (S.room.scores && S.room.scores[playerId]) || 0;
+  await updateRoomState(S.code, { status: "coco_reveal", cocoWinnerId: playerId, ["scores/" + playerId]: currentScore + 1 });
+}
+
+async function handleCocoNext() {
+  const nextRound = S.room.round + 1;
+  const cards = S.room.cocoCards || [];
+  if (nextRound >= cards.length) {
+    await updateRoomState(S.code, { status: "ended" });
+  } else {
+    const players = S.room.players;
+    const nextJudge = players[nextRound % players.length];
+    await updateRoomState(S.code, { status: "coco_submit", round: nextRound, cocoJudgeId: nextJudge.id, cocoWinnerId: null, cocoVoteOrder: null });
+  }
+}
+
+/* --------------------------------- GENERIC ------------------------------------ */
+
+async function handleStartGame() {
+  if (!S.room) return;
+  S.busy = true; S.showManager = false; render();
+  const mode = S.room.gameMode || "vote";
+  if (mode === "vote") await startVoteGame();
+  else if (mode === "truth_dare") await startTruthDare();
+  else if (mode === "duel") await startDuel();
+  else if (mode === "never") await startNever();
+  else if (mode === "photo") await startPhoto();
+  else if (mode === "coco") await startCoco();
+  S.busy = false;
+}
+
+async function handleRestart() {
+  await updateRoomState(S.code, {
+    status: "lobby", round: 0, questions: [],
+    scores: null,
+    duelA: null, duelB: null, duelQuestion: null, duelPool: null,
+    tdCurrentPlayerId: null, tdChoice: null, tdText: null,
+    neverStatements: null,
+    photoRevealOrder: null, photoRevealIndex: 0, photoRevealShowName: false,
+    cocoCards: null, cocoJudgeId: null, cocoWinnerId: null, cocoVoteOrder: null,
+  });
 }
 
 /* -------------------------------- CONFETTI ---------------------------------- */
@@ -642,14 +1060,26 @@ function render() {
     inner += '<div class="conn-dot offline" style="margin-bottom:10px;justify-content:center;display:flex;"><span class="dot"></span> Connexion perdue, nouvelle tentative…</div>';
   }
 
+  const st = S.room ? S.room.status : null;
+
   if (!S.code && S.mode === "home") inner += homeScreen();
   else if (!S.code && S.mode === "create") inner += nameEntryScreen("Créer une partie", "Tu seras l'animateur·rice de la soirée.", "Créer le salon", "create");
   else if (!S.code && S.mode === "join") inner += joinScreen();
   else if (S.code && !S.room) inner += loadingScreen();
-  else if (S.code && S.room && S.room.status === "lobby") inner += (S.showManager ? manageQuestionsScreen() : lobbyScreen());
-  else if (S.code && S.room && S.room.status === "question") inner += questionScreen();
-  else if (S.code && S.room && S.room.status === "results") inner += resultsScreen();
-  else if (S.code && S.room && S.room.status === "ended") inner += endScreen();
+  else if (st === "lobby") inner += (S.showManager ? manageQuestionsScreen() : lobbyScreen());
+  else if (st === "question") inner += questionScreen();
+  else if (st === "results") inner += resultsScreen();
+  else if (st === "td_choose") inner += tdChooseScreen();
+  else if (st === "td_reveal") inner += tdRevealScreen();
+  else if (st === "duel_vote") inner += duelVoteScreen();
+  else if (st === "duel_results") inner += duelResultsScreen();
+  else if (st === "never_prompt") inner += neverPromptScreen();
+  else if (st === "photo_wait") inner += photoWaitScreen();
+  else if (st === "photo_reveal") inner += photoRevealScreen();
+  else if (st === "coco_submit") inner += cocoSubmitScreen();
+  else if (st === "coco_vote") inner += cocoVoteScreen();
+  else if (st === "coco_reveal") inner += cocoRevealScreen();
+  else if (st === "ended") inner += endScreen();
 
   inner += '</div>';
   root.innerHTML = inner;
@@ -707,6 +1137,7 @@ function loadingScreen() {
 function lobbyScreen() {
   const room = S.room;
   const canStart = room.players.length >= 2;
+  const currentModeKey = room.gameMode || "vote";
   let html = '<div class="col gap-4 pop">';
 
   html += '<div class="col gap-2" style="align-items:center;">';
@@ -727,16 +1158,27 @@ function lobbyScreen() {
   html += '</div>';
 
   if (S.isAdmin) {
+    html += '<div class="card col gap-3" style="padding:20px;">';
+    html += '<h3 class="display xs muted" style="text-transform:uppercase;letter-spacing:0.05em;margin:0;">Mode de jeu</h3>';
+    GAME_MODES.forEach(m => {
+      const active = currentModeKey === m.key;
+      html += '<button class="toggle-row ' + (active ? 'active' : '') + '" data-select-mode="' + m.key + '">' +
+        '<div class="row gap-3" style="align-items:center;"><span style="font-size:1.3rem;">' + m.icon + '</span><div><p style="margin:0;font-weight:700;font-size:0.9rem;">' + m.title + '</p><p class="xs muted" style="margin:0;">' + m.desc + '</p></div></div>' +
+        (active ? '<span style="font-size:1.1rem;">✅</span>' : '') +
+        '</button>';
+    });
+    html += '</div>';
+
     html += '<div class="card col gap-4" style="padding:20px;">';
-    html += '<h3 class="display xs muted" style="text-transform:uppercase;letter-spacing:0.05em;margin:0;">Réglages de la partie</h3>';
+    html += '<h3 class="display xs muted" style="text-transform:uppercase;letter-spacing:0.05em;margin:0;">Réglages généraux</h3>';
 
     html += '<button class="toggle-row ' + (room.hotMode ? 'active' : '') + '" id="toggle-hot">' +
-      '<div class="row gap-3" style="align-items:center;"><span>🔥</span><div><p style="margin:0;font-weight:700;font-size:0.9rem;">Mode Hot</p><p class="xs muted" style="margin:0;">Des questions plus osées et coquines.</p></div></div>' +
+      '<div class="row gap-3" style="align-items:center;"><span>🔥</span><div><p style="margin:0;font-weight:700;font-size:0.9rem;">Mode Hot</p><p class="xs muted" style="margin:0;">Des questions et défis plus osés et coquins.</p></div></div>' +
       '<div class="toggle-pill ' + (room.hotMode ? 'active' : '') + '"><div class="toggle-knob ' + (room.hotMode ? 'active' : '') + '"></div></div>' +
       '</button>';
 
     html += '<button class="toggle-row ' + (room.birthdayMode ? 'active' : '') + '" id="toggle-birthday">' +
-      '<div class="row gap-3" style="align-items:center;"><span>🎂</span><div><p style="margin:0;font-weight:700;font-size:0.9rem;">Édition anniversaire</p><p class="xs muted" style="margin:0;">Des questions spéciales pour la personne fêtée.</p></div></div>' +
+      '<div class="row gap-3" style="align-items:center;"><span>🎂</span><div><p style="margin:0;font-weight:700;font-size:0.9rem;">Édition anniversaire</p><p class="xs muted" style="margin:0;">Des questions spéciales pour la personne fêtée (mode Vote/Duel).</p></div></div>' +
       '<div class="toggle-pill ' + (room.birthdayMode ? 'active' : '') + '"><div class="toggle-knob ' + (room.birthdayMode ? 'active' : '') + '"></div></div>' +
       '</button>';
 
@@ -748,22 +1190,25 @@ function lobbyScreen() {
       html += '</div>';
     }
 
-    const removedCount = room.removedDefaults ? Object.keys(room.removedDefaults).length : 0;
-    const customCount = room.customQuestions ? Object.keys(room.customQuestions).length : 0;
-    const editedCount = room.editedDefaults ? Object.keys(room.editedDefaults).length : 0;
-    html += '<button class="btn btn-secondary" id="btn-open-manager">📝 Gérer les questions</button>';
-    if (removedCount || customCount || editedCount) {
-      const bits = [];
-      if (customCount) bits.push(customCount + " ajoutée(s)");
-      if (editedCount) bits.push(editedCount + " modifiée(s)");
-      if (removedCount) bits.push(removedCount + " supprimée(s)");
-      html += '<p class="xs muted" style="margin:-6px 0 0;">' + bits.join(" · ") + '</p>';
+    if (currentModeKey === "vote" || currentModeKey === "duel") {
+      const removedCount = room.removedDefaults ? Object.keys(room.removedDefaults).length : 0;
+      const customCount = room.customQuestions ? Object.keys(room.customQuestions).length : 0;
+      const editedCount = room.editedDefaults ? Object.keys(room.editedDefaults).length : 0;
+      html += '<button class="btn btn-secondary" id="btn-open-manager">📝 Gérer les questions</button>';
+      if (removedCount || customCount || editedCount) {
+        const bits = [];
+        if (customCount) bits.push(customCount + " ajoutée(s)");
+        if (editedCount) bits.push(editedCount + " modifiée(s)");
+        if (removedCount) bits.push(removedCount + " supprimée(s)");
+        html += '<p class="xs muted" style="margin:-6px 0 0;">' + bits.join(" · ") + '</p>';
+      }
     }
 
     html += '<button class="btn btn-primary" id="btn-start" ' + (!canStart || S.busy ? 'disabled' : '') + '>' + (S.busy ? '<span class="spin">⏳</span>' : '<span class="display">Lancer la partie</span> →') + '</button>';
     html += '</div>';
   } else {
-    html += '<div class="card col gap-2 text-center" style="padding:24px;align-items:center;"><span>✨</span><p class="small muted">En attente que <strong>' + escapeHtml(room.hostName) + '</strong> lance la partie…</p></div>';
+    const modeInfo = GAME_MODES.find(m => m.key === currentModeKey);
+    html += '<div class="card col gap-2 text-center" style="padding:24px;align-items:center;"><span style="font-size:1.4rem;">' + (modeInfo ? modeInfo.icon : "✨") + '</span><p class="small muted">Mode choisi : <strong>' + (modeInfo ? escapeHtml(modeInfo.title) : "Vote") + '</strong></p><p class="small muted">En attente que <strong>' + escapeHtml(room.hostName) + '</strong> lance la partie…</p></div>';
   }
 
   html += '<button class="btn-link" id="btn-leave" style="align-self:center;">Quitter le salon</button>';
@@ -848,7 +1293,7 @@ function questionScreen() {
 
   let html = '<div class="col gap-4 pop">';
   html += '<div class="row between xs muted"><span>Question ' + (room.round + 1) + ' / ' + room.questions.length + '</span><span>' + votedCount + ' / ' + totalPlayers + ' ont voté</span></div>';
-  html += '<div class="card text-center" style="padding:24px;"><p class="display" style="font-size:1.4rem;font-weight:700;margin:0;line-height:1.3;">' + escapeHtml(question) + '</p></div>';
+  html += '<div class="card big-card"><p class="display">' + escapeHtml(question) + '</p></div>';
 
   html += '<div class="col gap-2">';
   room.players.forEach(p => {
@@ -870,7 +1315,7 @@ function resultsScreen() {
   const question = room.questions[room.round];
   const counts = {};
   Object.values(room.votes || {}).forEach(targetId => { counts[targetId] = (counts[targetId] || 0) + 1; });
-  const nameOf = (id) => { const p = room.players.find(p => p.id === id); return p ? p.name : "?"; };
+  const nameOf = (id) => playerName(room, id);
   const maxCount = Math.max(1, ...Object.values(counts));
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   const isLast = room.round + 1 >= room.questions.length;
@@ -908,15 +1353,302 @@ function resultsScreen() {
   return html;
 }
 
+/* ---------------------------- TRUTH OR DARE SCREENS --------------------------- */
+
+function tdChooseScreen() {
+  const room = S.room;
+  const current = playerName(room, room.tdCurrentPlayerId);
+  const isMe = S.myId === room.tdCurrentPlayerId;
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="card big-card"><p class="display" style="font-size:1.2rem;">C\'est au tour de <span style="color:#ffd23f;">' + escapeHtml(current) + '</span> !</p></div>';
+  if (isMe) {
+    html += '<div class="row gap-3">';
+    html += '<button class="btn btn-primary" id="btn-td-truth" style="flex:1;">🗣️ Vérité</button>';
+    html += '<button class="btn btn-primary" id="btn-td-dare" style="flex:1;background:linear-gradient(135deg,#3eeac0,#3ea8ff);">🎯 Action</button>';
+    html += '</div>';
+  } else {
+    html += '<p class="text-center small muted">En attente que ' + escapeHtml(current) + ' choisisse…</p>';
+  }
+  if (S.isAdmin) {
+    html += '<button class="btn-link" id="btn-td-end" style="align-self:center;">Terminer la partie</button>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function tdRevealScreen() {
+  const room = S.room;
+  const current = playerName(room, room.tdCurrentPlayerId);
+  const typeLabel = room.tdChoice === "truth" ? "🗣️ Vérité" : "🎯 Action";
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="card text-center" style="padding:14px;"><p class="small muted" style="margin:0;"><strong>' + escapeHtml(current) + '</strong> a choisi ' + typeLabel + '</p></div>';
+  html += '<div class="card big-card"><p class="display">' + escapeHtml(room.tdText) + '</p></div>';
+  if (S.isAdmin) {
+    html += '<button class="btn btn-primary" id="btn-td-next"><span class="display">Joueur suivant</span> →</button>';
+    html += '<button class="btn-link" id="btn-td-end" style="align-self:center;">Terminer la partie</button>';
+  } else {
+    html += '<p class="text-center xs muted">En attente de l\'animateur·rice…</p>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* --------------------------------- DUEL SCREENS -------------------------------- */
+
+function duelVoteScreen() {
+  const room = S.room;
+  const nameA = playerName(room, room.duelA);
+  const nameB = playerName(room, room.duelB);
+  const isContestant = S.myId === room.duelA || S.myId === room.duelB;
+  const myVote = (room.votes || {})[S.myId];
+  const votedCount = Object.keys(room.votes || {}).length;
+  const spectatorCount = Math.max(0, room.players.length - 2);
+
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="row between xs muted"><span>Duel ' + (room.round + 1) + '</span><span>' + votedCount + ' / ' + spectatorCount + ' ont voté</span></div>';
+  html += '<div class="card big-card"><p class="display">' + escapeHtml(room.duelQuestion) + '</p></div>';
+
+  html += '<div class="duel-vs">';
+  html += '<button class="duel-name-card ' + (myVote === "a" ? "selected" : "") + (isContestant ? " static" : "") + '" ' + (isContestant ? "disabled" : 'data-duel-vote="a"') + '>' + escapeHtml(nameA) + '</button>';
+  html += '<span class="duel-vs-label">VS</span>';
+  html += '<button class="duel-name-card ' + (myVote === "b" ? "selected" : "") + (isContestant ? " static" : "") + '" ' + (isContestant ? "disabled" : 'data-duel-vote="b"') + '>' + escapeHtml(nameB) + '</button>';
+  html += '</div>';
+
+  if (isContestant) {
+    html += '<p class="text-center small muted">⚔️ Tu es en duel ! Attends les votes du public…</p>';
+  } else {
+    html += '<p class="text-center xs muted">' + (myVote ? "Vote enregistré, en attente des autres…" : "Vote pour le/la gagnant(e) du duel.") + '</p>';
+  }
+
+  if (S.isAdmin) {
+    html += '<button class="btn btn-primary" id="btn-duel-reveal"><span class="display">Voir le résultat</span> 🏆</button>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function duelResultsScreen() {
+  const room = S.room;
+  const nameA = playerName(room, room.duelA);
+  const nameB = playerName(room, room.duelB);
+  let aCount = 0, bCount = 0;
+  Object.values(room.votes || {}).forEach(v => { if (v === "a") aCount++; else if (v === "b") bCount++; });
+  const total = Math.max(1, aCount + bCount);
+  const winnerId = aCount >= bCount ? room.duelA : room.duelB;
+  const isLast = room.round + 1 >= (room.duelPool || []).length;
+
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="card text-center" style="padding:16px;"><p class="small muted" style="margin:0;">' + escapeHtml(room.duelQuestion) + '</p></div>';
+
+  html += '<div class="card col gap-3" style="padding:20px;">';
+  html += '<div class="col gap-2"><div class="row between small"><span style="font-weight:700;">' + (winnerId === room.duelA ? '🏆 ' : '') + escapeHtml(nameA) + '</span><span class="muted">' + aCount + ' vote' + (aCount > 1 ? 's' : '') + '</span></div><div class="bar-track"><div class="bar-fill" style="width:' + ((aCount / total) * 100) + '%;background:' + (winnerId === room.duelA ? 'linear-gradient(90deg,#ff3e8e,#ffd23f)' : '#3eeac0') + ';"></div></div></div>';
+  html += '<div class="col gap-2"><div class="row between small"><span style="font-weight:700;">' + (winnerId === room.duelB ? '🏆 ' : '') + escapeHtml(nameB) + '</span><span class="muted">' + bCount + ' vote' + (bCount > 1 ? 's' : '') + '</span></div><div class="bar-track"><div class="bar-fill" style="width:' + ((bCount / total) * 100) + '%;background:' + (winnerId === room.duelB ? 'linear-gradient(90deg,#ff3e8e,#ffd23f)' : '#3eeac0') + ';"></div></div></div>';
+  html += '</div>';
+
+  html += scoreboardHtml(room);
+
+  if (S.isAdmin) {
+    html += '<button class="btn btn-primary" id="btn-duel-next"><span class="display">' + (isLast ? "Terminer la partie" : "Duel suivant") + '</span> →</button>';
+  } else {
+    html += '<p class="text-center xs muted">En attente de la suite…</p>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function scoreboardHtml(room) {
+  const scores = room.scores || {};
+  const entries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) return "";
+  let html = '<div class="card" style="padding:18px;">';
+  html += '<h4 class="display xs muted" style="text-transform:uppercase;margin:0 0 8px;">Tableau des scores</h4>';
+  entries.forEach(([id, score], i) => {
+    html += '<div class="scoreboard-row"><span class="small" style="font-weight:700;">' + (i === 0 && score > 0 ? '👑 ' : '') + escapeHtml(playerName(room, id)) + '</span><span class="small muted">' + score + ' pt' + (score > 1 ? 's' : '') + '</span></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+/* ----------------------------- NEVER HAVE I SCREEN ----------------------------- */
+
+function neverPromptScreen() {
+  const room = S.room;
+  const statement = (room.neverStatements || [])[room.round] || "";
+  const answered = S.myGageAnsweredRound === room.round;
+  const isLast = room.round + 1 >= (room.neverStatements || []).length;
+
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="row between xs muted"><span>Affirmation ' + (room.round + 1) + ' / ' + (room.neverStatements || []).length + '</span><span>Tes gages : ' + S.myGageCount + ' 🍹</span></div>';
+  html += '<div class="card big-card"><p class="display">' + escapeHtml(statement) + '</p></div>';
+
+  html += '<div class="row gap-3">';
+  html += '<button class="btn btn-primary" id="btn-gage-yes" ' + (answered ? "disabled" : "") + ' style="flex:1;">🙋 J\'ai déjà</button>';
+  html += '<button class="btn btn-secondary" id="btn-gage-no" ' + (answered ? "disabled" : "") + ' style="flex:1;">🙅 Jamais</button>';
+  html += '</div>';
+  if (answered) html += '<p class="text-center xs muted">Réponse enregistrée pour cette manche.</p>';
+
+  if (S.isAdmin) {
+    html += '<button class="btn btn-primary" id="btn-never-next"><span class="display">' + (isLast ? "Terminer la partie" : "Affirmation suivante") + '</span> →</button>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* ------------------------------ PHOTO ROULETTE SCREENS ------------------------- */
+
+function photoWaitScreen() {
+  const room = S.room;
+  const myPhotoDone = !!(room.photos && room.photos[S.myId]);
+  const count = Object.keys(room.photos || {}).length;
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="card big-card"><p class="display">📸 Prends une photo maintenant !</p><p class="small muted" style="margin-top:8px;">Selfie, grimace, n\'importe quoi — surprends le groupe.</p></div>';
+
+  html += '<input type="file" id="photo-input" accept="image/*" capture="user" style="display:none;" />';
+  if (myPhotoDone) {
+    html += '<button class="btn btn-secondary" id="btn-retake-photo">✅ Photo envoyée — reprendre</button>';
+  } else {
+    html += '<button class="btn btn-primary" id="btn-take-photo" ' + (S.busy ? 'disabled' : '') + '>' + (S.busy ? '<span class="spin">⏳</span>' : '📸 Prendre une photo') + '</button>';
+  }
+
+  html += '<p class="text-center xs muted">' + count + ' / ' + room.players.length + ' ont envoyé leur photo</p>';
+
+  if (S.isAdmin) {
+    html += '<button class="btn btn-primary" id="btn-launch-roulette" ' + (count < 1 ? "disabled" : "") + '><span class="display">Lancer la roulette</span> 🎰</button>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function photoRevealScreen() {
+  const room = S.room;
+  const order = room.photoRevealOrder || [];
+  const idx = room.photoRevealIndex || 0;
+  const currentId = order[idx];
+  const photoData = (room.photos || {})[currentId];
+  const showName = room.photoRevealShowName;
+  const isLast = idx + 1 >= order.length;
+
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="xs muted text-center">Photo ' + (idx + 1) + ' / ' + order.length + '</div>';
+  html += '<div class="photo-frame">' + (photoData ? '<img src="' + photoData + '" />' : '') + '</div>';
+  html += '<div class="card text-center" style="padding:14px;"><p class="display" style="margin:0;font-size:1.2rem;">' + (showName ? '😄 C\'est ' + escapeHtml(playerName(room, currentId)) + ' !' : '🤔 Qui est-ce ?') + '</p></div>';
+
+  if (S.isAdmin) {
+    if (!showName) {
+      html += '<button class="btn btn-primary" id="btn-photo-reveal-name"><span class="display">Révéler qui c\'est</span> 👀</button>';
+    } else {
+      html += '<button class="btn btn-primary" id="btn-photo-next"><span class="display">' + (isLast ? "Terminer la partie" : "Photo suivante") + '</span> →</button>';
+    }
+  } else {
+    html += '<p class="text-center xs muted">En attente de l\'animateur·rice…</p>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* ------------------------------ BLANC-MANGE COCO SCREENS ------------------------ */
+
+function cocoSubmitScreen() {
+  const room = S.room;
+  if (S.cocoAnswerInputRound !== room.round) {
+    S.cocoAnswerInput = "";
+    S.cocoAnswerInputRound = room.round;
+  }
+  const card = (room.cocoCards || [])[room.round] || "";
+  const judgeName = playerName(room, room.cocoJudgeId);
+  const amJudge = isJudge();
+  const answers = room.cocoAnswers || {};
+  const answeredCount = Object.keys(answers).length;
+  const expected = Math.max(1, room.players.length - 1);
+  const alreadyAnswered = !!answers[S.myId];
+
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="xs muted text-center">Manche ' + (room.round + 1) + ' / ' + (room.cocoCards || []).length + ' · Juge : ' + escapeHtml(judgeName) + (amJudge ? " (toi) 👑" : "") + '</div>';
+  html += '<div class="card big-card"><p class="display">' + escapeHtml(card) + '</p></div>';
+
+  if (amJudge) {
+    html += '<p class="text-center small muted">Tu es le/la juge 👑 — attends les réponses…</p>';
+  } else if (alreadyAnswered) {
+    html += '<p class="text-center small muted">✅ Réponse envoyée, en attente des autres…</p>';
+  } else {
+    html += '<div class="col gap-2"><input type="text" id="input-coco-answer" placeholder="Ta réponse la plus drôle…" value="' + escapeHtml(S.cocoAnswerInput) + '" /><button class="btn btn-primary" id="btn-coco-submit">Envoyer</button></div>';
+  }
+
+  html += '<p class="text-center xs muted">' + answeredCount + ' / ' + expected + ' réponses reçues</p>';
+
+  if (S.isAdmin) {
+    html += '<button class="btn btn-primary" id="btn-coco-show" ' + (answeredCount < 1 ? "disabled" : "") + '><span class="display">Voir les réponses</span> 👀</button>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function cocoVoteScreen() {
+  const room = S.room;
+  const card = (room.cocoCards || [])[room.round] || "";
+  const order = room.cocoVoteOrder || [];
+  const answers = room.cocoAnswers || {};
+  const amJudge = isJudge();
+
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="card text-center" style="padding:16px;"><p class="small muted" style="margin:0;">' + escapeHtml(card) + '</p></div>';
+  html += '<div class="col gap-2">';
+  order.forEach(id => {
+    const text = answers[id] || "";
+    html += '<div class="coco-answer-card ' + (amJudge ? "clickable" : "") + '" ' + (amJudge ? 'data-coco-pick="' + id + '"' : '') + '>' + escapeHtml(text) + '</div>';
+  });
+  html += '</div>';
+
+  if (amJudge) {
+    html += '<p class="text-center xs muted">Touche la réponse la plus drôle pour élire le/la gagnant(e).</p>';
+  } else {
+    html += '<p class="text-center xs muted">Le/la juge élit la meilleure réponse…</p>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function cocoRevealScreen() {
+  const room = S.room;
+  const card = (room.cocoCards || [])[room.round] || "";
+  const winnerText = (room.cocoAnswers || {})[room.cocoWinnerId] || "";
+  const isLast = room.round + 1 >= (room.cocoCards || []).length;
+
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="card text-center" style="padding:16px;"><p class="small muted" style="margin:0;">' + escapeHtml(card) + '</p></div>';
+  html += '<div class="coco-answer-card winner text-center">' + escapeHtml(winnerText) + '</div>';
+  html += '<p class="display text-center" style="color:#ffd23f;margin:0;">🏆 ' + escapeHtml(playerName(room, room.cocoWinnerId)) + ' remporte la manche !</p>';
+
+  html += scoreboardHtml(room);
+
+  if (S.isAdmin) {
+    html += '<button class="btn btn-primary" id="btn-coco-next"><span class="display">' + (isLast ? "Terminer la partie" : "Manche suivante") + '</span> →</button>';
+  } else {
+    html += '<p class="text-center xs muted">En attente de la suite…</p>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* ----------------------------------- END -------------------------------------- */
+
 function endScreen() {
-  let html = '<div class="card col gap-3 pop text-center" style="padding:32px;align-items:center;">';
+  const room = S.room;
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="card col gap-3 text-center" style="padding:32px;align-items:center;">';
   html += '<span style="font-size:1.8rem;">🎉</span>';
   html += '<h2 class="display" style="font-size:1.5rem;font-weight:700;margin:0;">Merci d\'avoir joué !</h2>';
   html += '<p class="small muted" style="margin:0;">La partie est terminée. Belle soirée à tous 🎉</p>';
+  html += '</div>';
+
+  if (room && room.scores) html += scoreboardHtml(room);
+
+  html += '<div class="col gap-2" style="align-items:center;">';
   if (S.isAdmin) {
-    html += '<button class="btn btn-primary" id="btn-restart"><span class="display">Relancer une partie</span></button>';
+    html += '<button class="btn btn-primary" id="btn-restart" style="width:100%;"><span class="display">Relancer une partie</span></button>';
   }
   html += '<button class="btn-link" id="btn-leave-end">Quitter le salon</button>';
+  html += '</div>';
   html += '</div>';
   return html;
 }
@@ -948,15 +1680,20 @@ function bindEvents() {
   on("btn-start", "click", handleStartGame);
   on("btn-leave", "click", resetToHome);
   on("btn-leave-end", "click", resetToHome);
+  on("btn-restart", "click", handleRestart);
 
+  document.querySelectorAll("[data-select-mode]").forEach(el => {
+    el.addEventListener("click", () => selectGameMode(el.getAttribute("data-select-mode")));
+  });
+
+  // Vote mode
   document.querySelectorAll("[data-vote-id]").forEach(el => {
     el.addEventListener("click", () => handleVote(el.getAttribute("data-vote-id")));
   });
-
   on("btn-reveal", "click", handleReveal);
   on("btn-next", "click", handleNextQuestion);
-  on("btn-restart", "click", handleRestart);
 
+  // Question manager
   on("btn-open-manager", "click", () => { S.showManager = true; render(); });
   on("btn-close-manager", "click", () => { S.showManager = false; S.qm.editingKey = null; render(); });
   on("btn-restore-all", "click", restoreAllDefaults);
@@ -1001,6 +1738,42 @@ function bindEvents() {
   document.querySelectorAll("[data-cancel-edit]").forEach(el => {
     el.addEventListener("click", cancelEditQm);
   });
+
+  // Truth or Dare
+  on("btn-td-truth", "click", () => handleTdChoice("truth"));
+  on("btn-td-dare", "click", () => handleTdChoice("dare"));
+  on("btn-td-next", "click", handleTdNext);
+  on("btn-td-end", "click", handleTdEnd);
+
+  // Duel
+  document.querySelectorAll("[data-duel-vote]").forEach(el => {
+    el.addEventListener("click", () => handleDuelVote(el.getAttribute("data-duel-vote")));
+  });
+  on("btn-duel-reveal", "click", handleDuelReveal);
+  on("btn-duel-next", "click", handleDuelNext);
+
+  // Never have I ever
+  on("btn-gage-yes", "click", () => handleGageAnswer(true));
+  on("btn-gage-no", "click", () => handleGageAnswer(false));
+  on("btn-never-next", "click", handleNeverNext);
+
+  // Photo roulette
+  on("btn-take-photo", "click", () => { const el = document.getElementById("photo-input"); if (el) el.click(); });
+  on("btn-retake-photo", "click", () => { const el = document.getElementById("photo-input"); if (el) el.click(); });
+  on("photo-input", "change", (e) => { if (e.target.files && e.target.files[0]) handlePhotoSelected(e.target.files[0]); });
+  on("btn-launch-roulette", "click", handleLaunchRoulette);
+  on("btn-photo-reveal-name", "click", handlePhotoRevealName);
+  on("btn-photo-next", "click", handlePhotoNext);
+
+  // Blanc-Manger Coco Hot
+  on("input-coco-answer", "input", (e) => { S.cocoAnswerInput = e.target.value; });
+  on("input-coco-answer", "keydown", (e) => { if (e.key === "Enter") submitCocoAnswer(); });
+  on("btn-coco-submit", "click", submitCocoAnswer);
+  on("btn-coco-show", "click", handleCocoShowAnswers);
+  document.querySelectorAll("[data-coco-pick]").forEach(el => {
+    el.addEventListener("click", () => handleCocoPick(el.getAttribute("data-coco-pick")));
+  });
+  on("btn-coco-next", "click", handleCocoNext);
 }
 
 render();
