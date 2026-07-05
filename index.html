@@ -305,11 +305,40 @@ function shuffle(arr) {
   return a;
 }
 
+function hashQuestion(text) {
+  let h = 0;
+  for (let i = 0; i < text.length; i++) { h = (h * 31 + text.charCodeAt(i)) | 0; }
+  return "h" + (h >>> 0).toString(36);
+}
+
+function getAllDefaultsByHash(birthdayName) {
+  const map = {};
+  QUESTIONS_CLASSIC.forEach(q => { map[hashQuestion(q)] = q; });
+  QUESTIONS_HOT.forEach(q => { map[hashQuestion(q)] = q; });
+  questionsBirthday(birthdayName).forEach(q => { map[hashQuestion(q)] = q; });
+  return map;
+}
+
+function effectiveDefaultList(opts) {
+  let list = QUESTIONS_CLASSIC.slice();
+  if (opts.hotMode) list = list.concat(QUESTIONS_HOT);
+  if (opts.birthdayMode) list = list.concat(questionsBirthday(opts.birthdayName));
+  const removed = opts.removedDefaults || {};
+  const edited = opts.editedDefaults || {};
+  return list
+    .map(q => {
+      const h = hashQuestion(q);
+      if (removed[h]) return null;
+      return edited[h] || q;
+    })
+    .filter(Boolean);
+}
+
 function buildPool(opts) {
-  let pool = QUESTIONS_CLASSIC.slice();
-  if (opts.hotMode) pool = pool.concat(QUESTIONS_HOT);
-  if (opts.birthdayMode) pool = pool.concat(questionsBirthday(opts.birthdayName));
-  return shuffle(pool).slice(0, Math.min(pool.length, 20));
+  const defaults = effectiveDefaultList(opts);
+  const customs = opts.customQuestions ? Object.values(opts.customQuestions) : [];
+  const base = shuffle(defaults).slice(0, Math.min(defaults.length, 20));
+  return shuffle(base.concat(customs));
 }
 
 function makeId() {
@@ -385,6 +414,8 @@ const S = {
   birthdayNameInput: "Julian",
   unsub: null,
   connected: true,
+  showManager: false,
+  qm: { editingKey: null, editingText: "", newCustomText: "" },
 };
 
 const root = document.getElementById("app-root");
@@ -396,6 +427,8 @@ function resetToHome() {
   S.isAdmin = false;
   S.mode = "home";
   S.error = "";
+  S.showManager = false;
+  S.qm = { editingKey: null, editingText: "", newCustomText: "" };
   render();
 }
 
@@ -465,8 +498,15 @@ async function handleJoin() {
 
 async function handleStartGame() {
   if (!S.room) return;
-  S.busy = true; render();
-  const questions = buildPool({ hotMode: S.room.hotMode, birthdayMode: S.room.birthdayMode, birthdayName: S.room.birthdayName });
+  S.busy = true; S.showManager = false; render();
+  const questions = buildPool({
+    hotMode: S.room.hotMode,
+    birthdayMode: S.room.birthdayMode,
+    birthdayName: S.room.birthdayName,
+    removedDefaults: S.room.removedDefaults,
+    editedDefaults: S.room.editedDefaults,
+    customQuestions: S.room.customQuestions,
+  });
   await updateRoomState(S.code, { status: "question", round: 0, questions: questions });
   S.busy = false;
 }
@@ -478,6 +518,64 @@ async function toggleMode(key) {
 
 async function saveBirthdayName() {
   await updateRoomState(S.code, { birthdayName: S.birthdayNameInput || "Julian" });
+}
+
+/* ------------------------------ QUESTION MANAGER ----------------------------- */
+
+function cancelEditQm() {
+  S.qm.editingKey = null;
+  S.qm.editingText = "";
+  render();
+}
+
+function startEditDefault(hash, currentText) {
+  S.qm.editingKey = "default:" + hash;
+  S.qm.editingText = currentText;
+  render();
+}
+
+async function saveEditDefault(hash) {
+  const text = S.qm.editingText.trim();
+  if (!text) { cancelEditQm(); return; }
+  await updateRoomState(S.code, { ["editedDefaults/" + hash]: text });
+  S.qm.editingKey = null; S.qm.editingText = "";
+  render();
+}
+
+async function toggleRemoveDefault(hash) {
+  const isRemoved = !!(S.room.removedDefaults && S.room.removedDefaults[hash]);
+  await updateRoomState(S.code, { ["removedDefaults/" + hash]: isRemoved ? null : true });
+}
+
+function startEditCustom(id, currentText) {
+  S.qm.editingKey = "custom:" + id;
+  S.qm.editingText = currentText;
+  render();
+}
+
+async function saveEditCustom(id) {
+  const text = S.qm.editingText.trim();
+  if (!text) { cancelEditQm(); return; }
+  await updateRoomState(S.code, { ["customQuestions/" + id]: text });
+  S.qm.editingKey = null; S.qm.editingText = "";
+  render();
+}
+
+async function deleteCustomQuestion(id) {
+  await updateRoomState(S.code, { ["customQuestions/" + id]: null });
+}
+
+async function addCustomQuestion() {
+  const text = S.qm.newCustomText.trim();
+  if (!text) return;
+  const id = makeId();
+  await updateRoomState(S.code, { ["customQuestions/" + id]: text });
+  S.qm.newCustomText = "";
+  render();
+}
+
+async function restoreAllDefaults() {
+  await updateRoomState(S.code, { removedDefaults: null, editedDefaults: null, customQuestions: null });
 }
 
 async function handleVote(targetId) {
@@ -548,7 +646,7 @@ function render() {
   else if (!S.code && S.mode === "create") inner += nameEntryScreen("Créer une partie", "Tu seras l'animateur·rice de la soirée.", "Créer le salon", "create");
   else if (!S.code && S.mode === "join") inner += joinScreen();
   else if (S.code && !S.room) inner += loadingScreen();
-  else if (S.code && S.room && S.room.status === "lobby") inner += lobbyScreen();
+  else if (S.code && S.room && S.room.status === "lobby") inner += (S.showManager ? manageQuestionsScreen() : lobbyScreen());
   else if (S.code && S.room && S.room.status === "question") inner += questionScreen();
   else if (S.code && S.room && S.room.status === "results") inner += resultsScreen();
   else if (S.code && S.room && S.room.status === "ended") inner += endScreen();
@@ -650,6 +748,18 @@ function lobbyScreen() {
       html += '</div>';
     }
 
+    const removedCount = room.removedDefaults ? Object.keys(room.removedDefaults).length : 0;
+    const customCount = room.customQuestions ? Object.keys(room.customQuestions).length : 0;
+    const editedCount = room.editedDefaults ? Object.keys(room.editedDefaults).length : 0;
+    html += '<button class="btn btn-secondary" id="btn-open-manager">📝 Gérer les questions</button>';
+    if (removedCount || customCount || editedCount) {
+      const bits = [];
+      if (customCount) bits.push(customCount + " ajoutée(s)");
+      if (editedCount) bits.push(editedCount + " modifiée(s)");
+      if (removedCount) bits.push(removedCount + " supprimée(s)");
+      html += '<p class="xs muted" style="margin:-6px 0 0;">' + bits.join(" · ") + '</p>';
+    }
+
     html += '<button class="btn btn-primary" id="btn-start" ' + (!canStart || S.busy ? 'disabled' : '') + '>' + (S.busy ? '<span class="spin">⏳</span>' : '<span class="display">Lancer la partie</span> →') + '</button>';
     html += '</div>';
   } else {
@@ -657,6 +767,74 @@ function lobbyScreen() {
   }
 
   html += '<button class="btn-link" id="btn-leave" style="align-self:center;">Quitter le salon</button>';
+  html += '</div>';
+  return html;
+}
+
+function manageQuestionsScreen() {
+  const room = S.room;
+  const categories = [
+    { label: "Classiques", list: QUESTIONS_CLASSIC },
+    { label: "Hot 🔥", list: QUESTIONS_HOT },
+    { label: "Anniversaire 🎂", list: questionsBirthday(room.birthdayName) },
+  ];
+
+  let html = '<div class="col gap-4 pop">';
+  html += '<div class="row between" style="align-items:center;">';
+  html += '<button class="btn-link" id="btn-close-manager">← Retour au salon</button>';
+  html += '<button class="btn-link" id="btn-restore-all">↺ Tout réinitialiser</button>';
+  html += '</div>';
+  html += '<h2 class="display" style="margin:0;font-size:1.4rem;">Gérer les questions</h2>';
+
+  html += '<div class="card col gap-3" style="padding:18px;">';
+  html += '<h3 class="display xs muted" style="text-transform:uppercase;margin:0;">Ajouter une question</h3>';
+  html += '<div class="row gap-2"><input type="text" id="input-new-custom" placeholder="Qui est le plus susceptible de… ?" value="' + escapeHtml(S.qm.newCustomText) + '" style="flex:1;" /><button class="btn btn-secondary" id="btn-add-custom" style="width:auto;padding:12px 16px;">Ajouter</button></div>';
+  html += '</div>';
+
+  const customEntries = Object.entries(room.customQuestions || {});
+  if (customEntries.length > 0) {
+    html += '<div class="card col gap-2" style="padding:18px;">';
+    html += '<h3 class="display xs muted" style="text-transform:uppercase;margin:0 0 4px;">Questions personnalisées</h3>';
+    customEntries.forEach(([id, text]) => {
+      const editing = S.qm.editingKey === "custom:" + id;
+      html += '<div class="row gap-2" style="align-items:center;">';
+      if (editing) {
+        html += '<input type="text" class="qm-edit-input" data-custom-input="' + id + '" value="' + escapeHtml(S.qm.editingText) + '" style="flex:1;" />';
+        html += '<button class="btn-link" data-save-custom="' + id + '">✔️</button>';
+        html += '<button class="btn-link" data-cancel-edit="1">✖️</button>';
+      } else {
+        html += '<span class="small" style="flex:1;">' + escapeHtml(text) + '</span>';
+        html += '<button class="btn-link" data-edit-custom="' + id + '">✏️</button>';
+        html += '<button class="btn-link" data-delete-custom="' + id + '">🗑️</button>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  categories.forEach(cat => {
+    html += '<div class="card col gap-2" style="padding:18px;">';
+    html += '<h3 class="display xs muted" style="text-transform:uppercase;margin:0 0 4px;">' + cat.label + '</h3>';
+    cat.list.forEach(qText => {
+      const hash = hashQuestion(qText);
+      const isRemoved = !!(room.removedDefaults && room.removedDefaults[hash]);
+      const displayText = (room.editedDefaults && room.editedDefaults[hash]) || qText;
+      const editing = S.qm.editingKey === "default:" + hash;
+      html += '<div class="row gap-2" style="align-items:center;' + (isRemoved ? 'opacity:0.4;' : '') + '">';
+      if (editing) {
+        html += '<input type="text" class="qm-edit-input" data-default-input="' + hash + '" value="' + escapeHtml(S.qm.editingText) + '" style="flex:1;" />';
+        html += '<button class="btn-link" data-save-default="' + hash + '">✔️</button>';
+        html += '<button class="btn-link" data-cancel-edit="1">✖️</button>';
+      } else {
+        html += '<span class="small" style="flex:1;' + (isRemoved ? 'text-decoration:line-through;' : '') + '">' + escapeHtml(displayText) + '</span>';
+        if (!isRemoved) html += '<button class="btn-link" data-edit-default="' + hash + '">✏️</button>';
+        html += '<button class="btn-link" data-toggle-default="' + hash + '">' + (isRemoved ? '♻️' : '🗑️') + '</button>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+
   html += '</div>';
   return html;
 }
@@ -778,6 +956,51 @@ function bindEvents() {
   on("btn-reveal", "click", handleReveal);
   on("btn-next", "click", handleNextQuestion);
   on("btn-restart", "click", handleRestart);
+
+  on("btn-open-manager", "click", () => { S.showManager = true; render(); });
+  on("btn-close-manager", "click", () => { S.showManager = false; S.qm.editingKey = null; render(); });
+  on("btn-restore-all", "click", restoreAllDefaults);
+  on("input-new-custom", "input", (e) => { S.qm.newCustomText = e.target.value; });
+  on("input-new-custom", "keydown", (e) => { if (e.key === "Enter") addCustomQuestion(); });
+  on("btn-add-custom", "click", addCustomQuestion);
+
+  document.querySelectorAll("[data-edit-default]").forEach(el => {
+    el.addEventListener("click", () => {
+      const hash = el.getAttribute("data-edit-default");
+      const byHash = getAllDefaultsByHash(S.room.birthdayName);
+      const current = (S.room.editedDefaults && S.room.editedDefaults[hash]) || byHash[hash] || "";
+      startEditDefault(hash, current);
+    });
+  });
+  document.querySelectorAll("[data-toggle-default]").forEach(el => {
+    el.addEventListener("click", () => toggleRemoveDefault(el.getAttribute("data-toggle-default")));
+  });
+  document.querySelectorAll("[data-save-default]").forEach(el => {
+    el.addEventListener("click", () => saveEditDefault(el.getAttribute("data-save-default")));
+  });
+  document.querySelectorAll("[data-default-input]").forEach(el => {
+    el.addEventListener("input", (e) => { S.qm.editingText = e.target.value; });
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") saveEditDefault(el.getAttribute("data-default-input")); });
+  });
+  document.querySelectorAll("[data-edit-custom]").forEach(el => {
+    el.addEventListener("click", () => {
+      const id = el.getAttribute("data-edit-custom");
+      startEditCustom(id, (S.room.customQuestions || {})[id] || "");
+    });
+  });
+  document.querySelectorAll("[data-save-custom]").forEach(el => {
+    el.addEventListener("click", () => saveEditCustom(el.getAttribute("data-save-custom")));
+  });
+  document.querySelectorAll("[data-custom-input]").forEach(el => {
+    el.addEventListener("input", (e) => { S.qm.editingText = e.target.value; });
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") saveEditCustom(el.getAttribute("data-custom-input")); });
+  });
+  document.querySelectorAll("[data-delete-custom]").forEach(el => {
+    el.addEventListener("click", () => deleteCustomQuestion(el.getAttribute("data-delete-custom")));
+  });
+  document.querySelectorAll("[data-cancel-edit]").forEach(el => {
+    el.addEventListener("click", cancelEditQm);
+  });
 }
 
 render();
