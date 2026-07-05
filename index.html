@@ -204,10 +204,12 @@
     border: 2px solid rgba(255,255,255,0.12);
     font-weight: 600;
     cursor: default;
+    text-align: left;
+    width: 100%;
   }
   .coco-answer-card.clickable { cursor: pointer; }
   .coco-answer-card.clickable:active { transform: scale(0.98); }
-  .coco-answer-card.winner { border-color: #ffd23f; background: rgba(255,210,63,0.14); }
+  .coco-answer-card.winner { border-color: #ffd23f; background: rgba(255,210,63,0.14); text-align: center; }
 
   .scoreboard-row {
     display: flex; align-items: center; justify-content: space-between;
@@ -442,13 +444,46 @@ const BLACK_CARDS_COCO = [
   "Ce qu'il ne faut jamais dire pendant l'amour : ___.",
 ];
 
+const WHITE_CARDS_COCO = [
+  "Un string en laine.",
+  "Mon ex.",
+  "Une crise existentielle à 3h du matin.",
+  "Le duty-free de l'aéroport.",
+  "Un abonnement Netflix que personne n'utilise.",
+  "La honte de mes parents.",
+  "Un tatouage raté.",
+  "Le stagiaire.",
+  "Une nuit blanche à cause d'une notification.",
+  "Mon compte bancaire à découvert.",
+  "Un plan cul qui a mal tourné.",
+  "La police des mœurs.",
+  "Un influenceur qui vend de la lessive.",
+  "Le wifi du voisin.",
+  "Une thérapie de groupe improvisée.",
+  "Mon ego surdimensionné.",
+  "Le divorce de mes parents.",
+  "Un strip-tease qui tourne mal.",
+  "La honte internationale.",
+  "Une secte de yoga.",
+  "Un string trouvé dans la machine à laver.",
+  "Le karma.",
+  "Une capote périmée.",
+  "Mon patron en soirée déguisement.",
+  "Un vibromasseur qui tombe en panne au pire moment.",
+  "La cousine un peu trop tactile.",
+  "Un groupe WhatsApp de famille.",
+  "Une crise de foie carabinée.",
+  "Le voisin du dessus qui fait du bruit au mauvais moment.",
+  "Une réputation à refaire.",
+];
+
 const GAME_MODES = [
   { key: "vote", icon: "🗳️", title: "Qui est le plus susceptible…", desc: "Votez pour la personne qui correspond le mieux à chaque question." },
   { key: "truth_dare", icon: "🎯", title: "Action ou Vérité", desc: "Chacun son tour choisit un défi ou une question piège." },
   { key: "duel", icon: "⚔️", title: "Duel surprise", desc: "Deux joueurs tirés au sort s'affrontent, le groupe vote le vainqueur." },
   { key: "never", icon: "🙈", title: "Je n'ai jamais", desc: "Chacun compte ses gages en privé sur son téléphone." },
   { key: "photo", icon: "📸", title: "Photo Roulette", desc: "Tout le monde envoie une photo, la roulette en révèle une au hasard." },
-  { key: "coco", icon: "🌶️", title: "Blanc-Manger Coco Hot", desc: "Complétez la phrase la plus drôle, le/la juge élit la meilleure." },
+  { key: "coco", icon: "🌶️", title: "Blanc-Manger Coco Hot", desc: "Une carte à trous, chacun joue une carte de sa main, le/la juge élit la meilleure." },
 ];
 
 function shuffle(arr) {
@@ -468,19 +503,21 @@ function hashQuestion(text) {
 
 function getAllDefaultsByHash(birthdayName) {
   const map = {};
-  QUESTIONS_CLASSIC.forEach(q => { map[hashQuestion(q)] = q; });
-  QUESTIONS_HOT.forEach(q => { map[hashQuestion(q)] = q; });
-  questionsBirthday(birthdayName).forEach(q => { map[hashQuestion(q)] = q; });
+  const all = []
+    .concat(QUESTIONS_CLASSIC, QUESTIONS_HOT, questionsBirthday(birthdayName))
+    .concat(TRUTH_QUESTIONS, TRUTH_QUESTIONS_HOT)
+    .concat(DARE_CHALLENGES, DARE_CHALLENGES_HOT)
+    .concat(NEVER_STATEMENTS, NEVER_STATEMENTS_HOT)
+    .concat(BLACK_CARDS_COCO)
+    .concat(WHITE_CARDS_COCO);
+  all.forEach(q => { map[hashQuestion(q)] = q; });
   return map;
 }
 
-function effectiveDefaultList(opts) {
-  let list = QUESTIONS_CLASSIC.slice();
-  if (opts.hotMode) list = list.concat(QUESTIONS_HOT);
-  if (opts.birthdayMode) list = list.concat(questionsBirthday(opts.birthdayName));
+function effectiveList(rawList, opts) {
   const removed = opts.removedDefaults || {};
   const edited = opts.editedDefaults || {};
-  return list
+  return rawList
     .map(q => {
       const h = hashQuestion(q);
       if (removed[h]) return null;
@@ -489,11 +526,47 @@ function effectiveDefaultList(opts) {
     .filter(Boolean);
 }
 
+function effectiveDefaultList(opts) {
+  let list = QUESTIONS_CLASSIC.slice();
+  if (opts.hotMode) list = list.concat(QUESTIONS_HOT);
+  if (opts.birthdayMode) list = list.concat(questionsBirthday(opts.birthdayName));
+  return effectiveList(list, opts);
+}
+
 function buildPool(opts) {
   const defaults = effectiveDefaultList(opts);
   const customs = opts.customQuestions ? Object.values(opts.customQuestions) : [];
   const base = shuffle(defaults).slice(0, Math.min(defaults.length, 20));
   return shuffle(base.concat(customs));
+}
+
+function effectiveTruthList(room) {
+  const base = TRUTH_QUESTIONS.concat(room.hotMode ? TRUTH_QUESTIONS_HOT : []);
+  const eff = effectiveList(base, { removedDefaults: room.removedDefaults, editedDefaults: room.editedDefaults });
+  const customs = room.customTruths ? Object.values(room.customTruths) : [];
+  return eff.concat(customs);
+}
+function effectiveDareList(room) {
+  const base = DARE_CHALLENGES.concat(room.hotMode ? DARE_CHALLENGES_HOT : []);
+  const eff = effectiveList(base, { removedDefaults: room.removedDefaults, editedDefaults: room.editedDefaults });
+  const customs = room.customDares ? Object.values(room.customDares) : [];
+  return eff.concat(customs);
+}
+function effectiveNeverList(room) {
+  const base = NEVER_STATEMENTS.concat(room.hotMode ? NEVER_STATEMENTS_HOT : []);
+  const eff = effectiveList(base, { removedDefaults: room.removedDefaults, editedDefaults: room.editedDefaults });
+  const customs = room.customNever ? Object.values(room.customNever) : [];
+  return eff.concat(customs);
+}
+function effectiveCocoBlackList(room) {
+  const eff = effectiveList(BLACK_CARDS_COCO, { removedDefaults: room.removedDefaults, editedDefaults: room.editedDefaults });
+  const customs = room.customCocoBlack ? Object.values(room.customCocoBlack) : [];
+  return eff.concat(customs);
+}
+function effectiveCocoWhiteList(room) {
+  const eff = effectiveList(WHITE_CARDS_COCO, { removedDefaults: room.removedDefaults, editedDefaults: room.editedDefaults });
+  const customs = room.customCocoWhite ? Object.values(room.customCocoWhite) : [];
+  return eff.concat(customs);
 }
 
 function makeId() {
@@ -585,11 +658,9 @@ const S = {
   unsub: null,
   connected: true,
   showManager: false,
-  qm: { editingKey: null, editingText: "", newCustomText: "" },
+  qm: { editingKey: null, editingText: "", newTextByBank: {} },
   myGageCount: 0,
   myGageAnsweredRound: -1,
-  cocoAnswerInput: "",
-  cocoAnswerInputRound: -1,
 };
 
 const root = document.getElementById("app-root");
@@ -602,11 +673,9 @@ function resetToHome() {
   S.mode = "home";
   S.error = "";
   S.showManager = false;
-  S.qm = { editingKey: null, editingText: "", newCustomText: "" };
+  S.qm = { editingKey: null, editingText: "", newTextByBank: {} };
   S.myGageCount = 0;
   S.myGageAnsweredRound = -1;
-  S.cocoAnswerInput = "";
-  S.cocoAnswerInputRound = -1;
   render();
 }
 
@@ -700,6 +769,49 @@ function copyCode() {
 
 /* ------------------------------ QUESTION MANAGER ----------------------------- */
 
+function getBankSections(mode, room) {
+  if (mode === "vote" || mode === "duel") {
+    return [{
+      customKey: "customQuestions",
+      title: 'Questions "Qui est le plus susceptible…"',
+      subcats: [
+        { label: "Classiques", list: QUESTIONS_CLASSIC },
+        { label: "Hot 🔥", list: QUESTIONS_HOT },
+        { label: "Anniversaire 🎂", list: questionsBirthday(room.birthdayName) },
+      ],
+    }];
+  }
+  if (mode === "truth_dare") {
+    return [
+      { customKey: "customTruths", title: "Questions Vérité", subcats: [
+        { label: "Vérité", list: TRUTH_QUESTIONS },
+        { label: "Vérité Hot 🔥", list: TRUTH_QUESTIONS_HOT },
+      ] },
+      { customKey: "customDares", title: "Défis Action", subcats: [
+        { label: "Action", list: DARE_CHALLENGES },
+        { label: "Action Hot 🔥", list: DARE_CHALLENGES_HOT },
+      ] },
+    ];
+  }
+  if (mode === "never") {
+    return [{ customKey: "customNever", title: "Affirmations \u00ab Je n'ai jamais \u00bb", subcats: [
+      { label: "Classiques", list: NEVER_STATEMENTS },
+      { label: "Hot 🔥", list: NEVER_STATEMENTS_HOT },
+    ] }];
+  }
+  if (mode === "coco") {
+    return [
+      { customKey: "customCocoBlack", title: "Cartes noires (phrases à trous)", subcats: [
+        { label: "Cartes noires", list: BLACK_CARDS_COCO },
+      ] },
+      { customKey: "customCocoWhite", title: "Cartes blanches (réponses)", subcats: [
+        { label: "Cartes blanches", list: WHITE_CARDS_COCO },
+      ] },
+    ];
+  }
+  return [];
+}
+
 function cancelEditQm() {
   S.qm.editingKey = null;
   S.qm.editingText = "";
@@ -725,35 +837,39 @@ async function toggleRemoveDefault(hash) {
   await updateRoomState(S.code, { ["removedDefaults/" + hash]: isRemoved ? null : true });
 }
 
-function startEditCustom(id, currentText) {
-  S.qm.editingKey = "custom:" + id;
+function startEditBankCustom(bankKey, id, currentText) {
+  S.qm.editingKey = "bank:" + bankKey + ":" + id;
   S.qm.editingText = currentText;
   render();
 }
 
-async function saveEditCustom(id) {
+async function saveEditBankCustom(bankKey, id) {
   const text = S.qm.editingText.trim();
   if (!text) { cancelEditQm(); return; }
-  await updateRoomState(S.code, { ["customQuestions/" + id]: text });
+  await updateRoomState(S.code, { [bankKey + "/" + id]: text });
   S.qm.editingKey = null; S.qm.editingText = "";
   render();
 }
 
-async function deleteCustomQuestion(id) {
-  await updateRoomState(S.code, { ["customQuestions/" + id]: null });
+async function deleteBankCustom(bankKey, id) {
+  await updateRoomState(S.code, { [bankKey + "/" + id]: null });
 }
 
-async function addCustomQuestion() {
-  const text = S.qm.newCustomText.trim();
+async function addBankCustom(bankKey) {
+  const text = (S.qm.newTextByBank[bankKey] || "").trim();
   if (!text) return;
   const id = makeId();
-  await updateRoomState(S.code, { ["customQuestions/" + id]: text });
-  S.qm.newCustomText = "";
+  await updateRoomState(S.code, { [bankKey + "/" + id]: text });
+  S.qm.newTextByBank[bankKey] = "";
   render();
 }
 
 async function restoreAllDefaults() {
-  await updateRoomState(S.code, { removedDefaults: null, editedDefaults: null, customQuestions: null });
+  await updateRoomState(S.code, {
+    removedDefaults: null, editedDefaults: null,
+    customQuestions: null, customTruths: null, customDares: null,
+    customNever: null, customCocoBlack: null, customCocoWhite: null,
+  });
 }
 
 /* ------------------------------- VOTE MODE ----------------------------------- */
@@ -793,11 +909,11 @@ async function startTruthDare() {
 }
 
 function pickTruth() {
-  const pool = TRUTH_QUESTIONS.concat(S.room.hotMode ? TRUTH_QUESTIONS_HOT : []);
+  const pool = effectiveTruthList(S.room);
   return pool[Math.floor(Math.random() * pool.length)];
 }
 function pickDare() {
-  const pool = DARE_CHALLENGES.concat(S.room.hotMode ? DARE_CHALLENGES_HOT : []);
+  const pool = effectiveDareList(S.room);
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
@@ -875,7 +991,7 @@ async function handleDuelNext() {
 /* ------------------------------ NEVER HAVE I EVER ----------------------------- */
 
 async function startNever() {
-  const pool = shuffle(NEVER_STATEMENTS.concat(S.room.hotMode ? NEVER_STATEMENTS_HOT : [])).slice(0, 15);
+  const pool = shuffle(effectiveNeverList(S.room)).slice(0, 15);
   S.myGageCount = 0;
   S.myGageAnsweredRound = -1;
   await updateRoomState(S.code, { status: "never_prompt", round: 0, neverStatements: pool });
@@ -958,13 +1074,34 @@ async function handlePhotoNext() {
 
 /* ----------------------------- BLANC-MANGE COCO HOT --------------------------- */
 
+const COCO_HAND_SIZE = 6;
+
+function dealCocoHands(players, n, pool) {
+  const hands = {};
+  players.forEach(p => {
+    const hand = [];
+    const localUsed = {};
+    for (let i = 0; i < n; i++) {
+      const available = pool.filter(c => !localUsed[c]);
+      const finalPool = available.length > 0 ? available : pool;
+      const card = finalPool[Math.floor(Math.random() * finalPool.length)];
+      hand.push(card);
+      localUsed[card] = true;
+    }
+    hands[p.id] = hand;
+  });
+  return hands;
+}
+
 async function startCoco() {
-  const cards = shuffle(BLACK_CARDS_COCO).slice(0, 12);
+  const blackCards = shuffle(effectiveCocoBlackList(S.room)).slice(0, 12);
+  const whitePool = effectiveCocoWhiteList(S.room);
+  const hands = dealCocoHands(S.room.players, COCO_HAND_SIZE, whitePool);
   const scores = {};
   S.room.players.forEach(p => { scores[p.id] = 0; });
   await updateRoomState(S.code, {
-    status: "coco_submit", round: 0, cocoCards: cards, cocoJudgeId: S.room.players[0].id,
-    cocoWinnerId: null, cocoVoteOrder: null, scores: scores,
+    status: "coco_submit", round: 0, cocoCards: blackCards, cocoHands: hands,
+    cocoJudgeId: S.room.players[0].id, cocoWinnerId: null, cocoVoteOrder: null, scores: scores,
   });
 }
 
@@ -972,12 +1109,21 @@ function isJudge() {
   return S.room && S.myId === S.room.cocoJudgeId;
 }
 
-async function submitCocoAnswer() {
-  const text = S.cocoAnswerInput.trim();
-  if (!text || !S.room) return;
-  await set(ref(db, "rooms/" + S.code + "/cocoAnswers/" + S.room.round + "/" + S.myId), text);
-  S.cocoAnswerInput = "";
-  render();
+async function playCocoCard(cardText) {
+  if (!S.room) return;
+  const hand = (S.room.cocoHands && S.room.cocoHands[S.myId]) || [];
+  if (hand.indexOf(cardText) === -1) return;
+  await set(ref(db, "rooms/" + S.code + "/cocoAnswers/" + S.room.round + "/" + S.myId), cardText);
+
+  const whitePool = effectiveCocoWhiteList(S.room);
+  const remaining = hand.filter(c => c !== cardText);
+  const localUsed = {};
+  remaining.forEach(c => { localUsed[c] = true; });
+  const available = whitePool.filter(c => !localUsed[c]);
+  const finalPool = available.length > 0 ? available : whitePool;
+  const newCard = finalPool[Math.floor(Math.random() * finalPool.length)];
+  remaining.push(newCard);
+  await updateRoomState(S.code, { ["cocoHands/" + S.myId]: remaining });
 }
 
 async function handleCocoShowAnswers() {
@@ -1025,7 +1171,7 @@ async function handleRestart() {
     tdCurrentPlayerId: null, tdChoice: null, tdText: null,
     neverStatements: null,
     photoRevealOrder: null, photoRevealIndex: 0, photoRevealShowName: false,
-    cocoCards: null, cocoJudgeId: null, cocoWinnerId: null, cocoVoteOrder: null,
+    cocoCards: null, cocoHands: null, cocoJudgeId: null, cocoWinnerId: null, cocoVoteOrder: null,
   });
 }
 
@@ -1190,19 +1336,7 @@ function lobbyScreen() {
       html += '</div>';
     }
 
-    if (currentModeKey === "vote" || currentModeKey === "duel") {
-      const removedCount = room.removedDefaults ? Object.keys(room.removedDefaults).length : 0;
-      const customCount = room.customQuestions ? Object.keys(room.customQuestions).length : 0;
-      const editedCount = room.editedDefaults ? Object.keys(room.editedDefaults).length : 0;
-      html += '<button class="btn btn-secondary" id="btn-open-manager">📝 Gérer les questions</button>';
-      if (removedCount || customCount || editedCount) {
-        const bits = [];
-        if (customCount) bits.push(customCount + " ajoutée(s)");
-        if (editedCount) bits.push(editedCount + " modifiée(s)");
-        if (removedCount) bits.push(removedCount + " supprimée(s)");
-        html += '<p class="xs muted" style="margin:-6px 0 0;">' + bits.join(" · ") + '</p>';
-      }
-    }
+    html += '<button class="btn btn-secondary" id="btn-open-manager">📝 Gérer les questions et cartes</button>';
 
     html += '<button class="btn btn-primary" id="btn-start" ' + (!canStart || S.busy ? 'disabled' : '') + '>' + (S.busy ? '<span class="spin">⏳</span>' : '<span class="display">Lancer la partie</span> →') + '</button>';
     html += '</div>';
@@ -1218,66 +1352,69 @@ function lobbyScreen() {
 
 function manageQuestionsScreen() {
   const room = S.room;
-  const categories = [
-    { label: "Classiques", list: QUESTIONS_CLASSIC },
-    { label: "Hot 🔥", list: QUESTIONS_HOT },
-    { label: "Anniversaire 🎂", list: questionsBirthday(room.birthdayName) },
-  ];
+  const mode = room.gameMode || "vote";
+  const sections = getBankSections(mode, room);
+  const modeInfo = GAME_MODES.find(m => m.key === mode);
 
   let html = '<div class="col gap-4 pop">';
   html += '<div class="row between" style="align-items:center;">';
   html += '<button class="btn-link" id="btn-close-manager">← Retour au salon</button>';
   html += '<button class="btn-link" id="btn-restore-all">↺ Tout réinitialiser</button>';
   html += '</div>';
-  html += '<h2 class="display" style="margin:0;font-size:1.4rem;">Gérer les questions</h2>';
+  html += '<h2 class="display" style="margin:0;font-size:1.4rem;">Gérer le contenu</h2>';
+  html += '<p class="xs muted" style="margin:-8px 0 0;">Mode actuel : ' + (modeInfo ? modeInfo.icon + ' ' + escapeHtml(modeInfo.title) : "") + '</p>';
 
-  html += '<div class="card col gap-3" style="padding:18px;">';
-  html += '<h3 class="display xs muted" style="text-transform:uppercase;margin:0;">Ajouter une question</h3>';
-  html += '<div class="row gap-2"><input type="text" id="input-new-custom" placeholder="Qui est le plus susceptible de… ?" value="' + escapeHtml(S.qm.newCustomText) + '" style="flex:1;" /><button class="btn btn-secondary" id="btn-add-custom" style="width:auto;padding:12px 16px;">Ajouter</button></div>';
-  html += '</div>';
+  sections.forEach(section => {
+    html += '<div class="card col gap-3" style="padding:18px;">';
+    html += '<h3 class="display xs muted" style="text-transform:uppercase;margin:0;">' + escapeHtml(section.title) + '</h3>';
 
-  const customEntries = Object.entries(room.customQuestions || {});
-  if (customEntries.length > 0) {
-    html += '<div class="card col gap-2" style="padding:18px;">';
-    html += '<h3 class="display xs muted" style="text-transform:uppercase;margin:0 0 4px;">Questions personnalisées</h3>';
-    customEntries.forEach(([id, text]) => {
-      const editing = S.qm.editingKey === "custom:" + id;
-      html += '<div class="row gap-2" style="align-items:center;">';
-      if (editing) {
-        html += '<input type="text" class="qm-edit-input" data-custom-input="' + id + '" value="' + escapeHtml(S.qm.editingText) + '" style="flex:1;" />';
-        html += '<button class="btn-link" data-save-custom="' + id + '">✔️</button>';
-        html += '<button class="btn-link" data-cancel-edit="1">✖️</button>';
-      } else {
-        html += '<span class="small" style="flex:1;">' + escapeHtml(text) + '</span>';
-        html += '<button class="btn-link" data-edit-custom="' + id + '">✏️</button>';
-        html += '<button class="btn-link" data-delete-custom="' + id + '">🗑️</button>';
-      }
+    const draft = S.qm.newTextByBank[section.customKey] || "";
+    html += '<div class="row gap-2"><input type="text" class="qm-add-input" data-bank-input="' + section.customKey + '" placeholder="Ajouter une carte / question…" value="' + escapeHtml(draft) + '" style="flex:1;" /><button class="btn btn-secondary" data-add-bank="' + section.customKey + '" style="width:auto;padding:12px 16px;">Ajouter</button></div>';
+
+    const customEntries = Object.entries(room[section.customKey] || {});
+    if (customEntries.length > 0) {
+      html += '<div class="col gap-2" style="margin-top:4px;">';
+      html += '<p class="xs muted" style="margin:0;text-transform:uppercase;">Ajoutées</p>';
+      customEntries.forEach(([id, text]) => {
+        const editing = S.qm.editingKey === "bank:" + section.customKey + ":" + id;
+        html += '<div class="row gap-2" style="align-items:center;">';
+        if (editing) {
+          html += '<input type="text" class="qm-edit-input" data-bank-edit-input="' + section.customKey + '|' + id + '" value="' + escapeHtml(S.qm.editingText) + '" style="flex:1;" />';
+          html += '<button class="btn-link" data-bank-save="' + section.customKey + '|' + id + '">✔️</button>';
+          html += '<button class="btn-link" data-cancel-edit="1">✖️</button>';
+        } else {
+          html += '<span class="small" style="flex:1;">' + escapeHtml(text) + '</span>';
+          html += '<button class="btn-link" data-bank-edit="' + section.customKey + '|' + id + '">✏️</button>';
+          html += '<button class="btn-link" data-bank-delete="' + section.customKey + '|' + id + '">🗑️</button>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+
+    section.subcats.forEach(cat => {
+      html += '<div class="card col gap-2" style="padding:18px;">';
+      html += '<h3 class="display xs muted" style="text-transform:uppercase;margin:0 0 4px;">' + escapeHtml(cat.label) + '</h3>';
+      cat.list.forEach(qText => {
+        const hash = hashQuestion(qText);
+        const isRemoved = !!(room.removedDefaults && room.removedDefaults[hash]);
+        const displayText = (room.editedDefaults && room.editedDefaults[hash]) || qText;
+        const editing = S.qm.editingKey === "default:" + hash;
+        html += '<div class="row gap-2" style="align-items:center;' + (isRemoved ? 'opacity:0.4;' : '') + '">';
+        if (editing) {
+          html += '<input type="text" class="qm-edit-input" data-default-input="' + hash + '" value="' + escapeHtml(S.qm.editingText) + '" style="flex:1;" />';
+          html += '<button class="btn-link" data-save-default="' + hash + '">✔️</button>';
+          html += '<button class="btn-link" data-cancel-edit="1">✖️</button>';
+        } else {
+          html += '<span class="small" style="flex:1;' + (isRemoved ? 'text-decoration:line-through;' : '') + '">' + escapeHtml(displayText) + '</span>';
+          if (!isRemoved) html += '<button class="btn-link" data-edit-default="' + hash + '">✏️</button>';
+          html += '<button class="btn-link" data-toggle-default="' + hash + '">' + (isRemoved ? '♻️' : '🗑️') + '</button>';
+        }
+        html += '</div>';
+      });
       html += '</div>';
     });
-    html += '</div>';
-  }
-
-  categories.forEach(cat => {
-    html += '<div class="card col gap-2" style="padding:18px;">';
-    html += '<h3 class="display xs muted" style="text-transform:uppercase;margin:0 0 4px;">' + cat.label + '</h3>';
-    cat.list.forEach(qText => {
-      const hash = hashQuestion(qText);
-      const isRemoved = !!(room.removedDefaults && room.removedDefaults[hash]);
-      const displayText = (room.editedDefaults && room.editedDefaults[hash]) || qText;
-      const editing = S.qm.editingKey === "default:" + hash;
-      html += '<div class="row gap-2" style="align-items:center;' + (isRemoved ? 'opacity:0.4;' : '') + '">';
-      if (editing) {
-        html += '<input type="text" class="qm-edit-input" data-default-input="' + hash + '" value="' + escapeHtml(S.qm.editingText) + '" style="flex:1;" />';
-        html += '<button class="btn-link" data-save-default="' + hash + '">✔️</button>';
-        html += '<button class="btn-link" data-cancel-edit="1">✖️</button>';
-      } else {
-        html += '<span class="small" style="flex:1;' + (isRemoved ? 'text-decoration:line-through;' : '') + '">' + escapeHtml(displayText) + '</span>';
-        if (!isRemoved) html += '<button class="btn-link" data-edit-default="' + hash + '">✏️</button>';
-        html += '<button class="btn-link" data-toggle-default="' + hash + '">' + (isRemoved ? '♻️' : '🗑️') + '</button>';
-      }
-      html += '</div>';
-    });
-    html += '</div>';
   });
 
   html += '</div>';
@@ -1550,10 +1687,6 @@ function photoRevealScreen() {
 
 function cocoSubmitScreen() {
   const room = S.room;
-  if (S.cocoAnswerInputRound !== room.round) {
-    S.cocoAnswerInput = "";
-    S.cocoAnswerInputRound = room.round;
-  }
   const card = (room.cocoCards || [])[room.round] || "";
   const judgeName = playerName(room, room.cocoJudgeId);
   const amJudge = isJudge();
@@ -1561,20 +1694,26 @@ function cocoSubmitScreen() {
   const answeredCount = Object.keys(answers).length;
   const expected = Math.max(1, room.players.length - 1);
   const alreadyAnswered = !!answers[S.myId];
+  const myHand = (room.cocoHands && room.cocoHands[S.myId]) || [];
 
   let html = '<div class="col gap-4 pop">';
   html += '<div class="xs muted text-center">Manche ' + (room.round + 1) + ' / ' + (room.cocoCards || []).length + ' · Juge : ' + escapeHtml(judgeName) + (amJudge ? " (toi) 👑" : "") + '</div>';
   html += '<div class="card big-card"><p class="display">' + escapeHtml(card) + '</p></div>';
 
   if (amJudge) {
-    html += '<p class="text-center small muted">Tu es le/la juge 👑 — attends les réponses…</p>';
+    html += '<p class="text-center small muted">Tu es le/la juge 👑 — attends les cartes jouées…</p>';
   } else if (alreadyAnswered) {
-    html += '<p class="text-center small muted">✅ Réponse envoyée, en attente des autres…</p>';
+    html += '<p class="text-center small muted">✅ Carte jouée, en attente des autres…</p>';
   } else {
-    html += '<div class="col gap-2"><input type="text" id="input-coco-answer" placeholder="Ta réponse la plus drôle…" value="' + escapeHtml(S.cocoAnswerInput) + '" /><button class="btn btn-primary" id="btn-coco-submit">Envoyer</button></div>';
+    html += '<p class="xs muted" style="margin:0;">Choisis une carte de ta main :</p>';
+    html += '<div class="col gap-2">';
+    myHand.forEach(cardText => {
+      html += '<button class="coco-answer-card clickable" data-coco-play="' + escapeHtml(cardText) + '">' + escapeHtml(cardText) + '</button>';
+    });
+    html += '</div>';
   }
 
-  html += '<p class="text-center xs muted">' + answeredCount + ' / ' + expected + ' réponses reçues</p>';
+  html += '<p class="text-center xs muted">' + answeredCount + ' / ' + expected + ' cartes jouées</p>';
 
   if (S.isAdmin) {
     html += '<button class="btn btn-primary" id="btn-coco-show" ' + (answeredCount < 1 ? "disabled" : "") + '><span class="display">Voir les réponses</span> 👀</button>';
@@ -1595,7 +1734,7 @@ function cocoVoteScreen() {
   html += '<div class="col gap-2">';
   order.forEach(id => {
     const text = answers[id] || "";
-    html += '<div class="coco-answer-card ' + (amJudge ? "clickable" : "") + '" ' + (amJudge ? 'data-coco-pick="' + id + '"' : '') + '>' + escapeHtml(text) + '</div>';
+    html += '<button class="coco-answer-card ' + (amJudge ? "clickable" : "") + '" ' + (amJudge ? 'data-coco-pick="' + id + '"' : "disabled") + '>' + escapeHtml(text) + '</button>';
   });
   html += '</div>';
 
@@ -1616,7 +1755,7 @@ function cocoRevealScreen() {
 
   let html = '<div class="col gap-4 pop">';
   html += '<div class="card text-center" style="padding:16px;"><p class="small muted" style="margin:0;">' + escapeHtml(card) + '</p></div>';
-  html += '<div class="coco-answer-card winner text-center">' + escapeHtml(winnerText) + '</div>';
+  html += '<div class="coco-answer-card winner">' + escapeHtml(winnerText) + '</div>';
   html += '<p class="display text-center" style="color:#ffd23f;margin:0;">🏆 ' + escapeHtml(playerName(room, room.cocoWinnerId)) + ' remporte la manche !</p>';
 
   html += scoreboardHtml(room);
@@ -1693,13 +1832,47 @@ function bindEvents() {
   on("btn-reveal", "click", handleReveal);
   on("btn-next", "click", handleNextQuestion);
 
-  // Question manager
+  // Question / card manager
   on("btn-open-manager", "click", () => { S.showManager = true; render(); });
   on("btn-close-manager", "click", () => { S.showManager = false; S.qm.editingKey = null; render(); });
   on("btn-restore-all", "click", restoreAllDefaults);
-  on("input-new-custom", "input", (e) => { S.qm.newCustomText = e.target.value; });
-  on("input-new-custom", "keydown", (e) => { if (e.key === "Enter") addCustomQuestion(); });
-  on("btn-add-custom", "click", addCustomQuestion);
+
+  document.querySelectorAll("[data-bank-input]").forEach(el => {
+    el.addEventListener("input", (e) => { S.qm.newTextByBank[el.getAttribute("data-bank-input")] = e.target.value; });
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") addBankCustom(el.getAttribute("data-bank-input")); });
+  });
+  document.querySelectorAll("[data-add-bank]").forEach(el => {
+    el.addEventListener("click", () => addBankCustom(el.getAttribute("data-add-bank")));
+  });
+  document.querySelectorAll("[data-bank-edit]").forEach(el => {
+    el.addEventListener("click", () => {
+      const parts = el.getAttribute("data-bank-edit").split("|");
+      const bankKey = parts[0], id = parts[1];
+      const current = ((S.room[bankKey] || {})[id]) || "";
+      startEditBankCustom(bankKey, id, current);
+    });
+  });
+  document.querySelectorAll("[data-bank-save]").forEach(el => {
+    el.addEventListener("click", () => {
+      const parts = el.getAttribute("data-bank-save").split("|");
+      saveEditBankCustom(parts[0], parts[1]);
+    });
+  });
+  document.querySelectorAll("[data-bank-edit-input]").forEach(el => {
+    el.addEventListener("input", (e) => { S.qm.editingText = e.target.value; });
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const parts = el.getAttribute("data-bank-edit-input").split("|");
+        saveEditBankCustom(parts[0], parts[1]);
+      }
+    });
+  });
+  document.querySelectorAll("[data-bank-delete]").forEach(el => {
+    el.addEventListener("click", () => {
+      const parts = el.getAttribute("data-bank-delete").split("|");
+      deleteBankCustom(parts[0], parts[1]);
+    });
+  });
 
   document.querySelectorAll("[data-edit-default]").forEach(el => {
     el.addEventListener("click", () => {
@@ -1718,22 +1891,6 @@ function bindEvents() {
   document.querySelectorAll("[data-default-input]").forEach(el => {
     el.addEventListener("input", (e) => { S.qm.editingText = e.target.value; });
     el.addEventListener("keydown", (e) => { if (e.key === "Enter") saveEditDefault(el.getAttribute("data-default-input")); });
-  });
-  document.querySelectorAll("[data-edit-custom]").forEach(el => {
-    el.addEventListener("click", () => {
-      const id = el.getAttribute("data-edit-custom");
-      startEditCustom(id, (S.room.customQuestions || {})[id] || "");
-    });
-  });
-  document.querySelectorAll("[data-save-custom]").forEach(el => {
-    el.addEventListener("click", () => saveEditCustom(el.getAttribute("data-save-custom")));
-  });
-  document.querySelectorAll("[data-custom-input]").forEach(el => {
-    el.addEventListener("input", (e) => { S.qm.editingText = e.target.value; });
-    el.addEventListener("keydown", (e) => { if (e.key === "Enter") saveEditCustom(el.getAttribute("data-custom-input")); });
-  });
-  document.querySelectorAll("[data-delete-custom]").forEach(el => {
-    el.addEventListener("click", () => deleteCustomQuestion(el.getAttribute("data-delete-custom")));
   });
   document.querySelectorAll("[data-cancel-edit]").forEach(el => {
     el.addEventListener("click", cancelEditQm);
@@ -1766,9 +1923,9 @@ function bindEvents() {
   on("btn-photo-next", "click", handlePhotoNext);
 
   // Blanc-Manger Coco Hot
-  on("input-coco-answer", "input", (e) => { S.cocoAnswerInput = e.target.value; });
-  on("input-coco-answer", "keydown", (e) => { if (e.key === "Enter") submitCocoAnswer(); });
-  on("btn-coco-submit", "click", submitCocoAnswer);
+  document.querySelectorAll("[data-coco-play]").forEach(el => {
+    el.addEventListener("click", () => playCocoCard(el.getAttribute("data-coco-play")));
+  });
   on("btn-coco-show", "click", handleCocoShowAnswers);
   document.querySelectorAll("[data-coco-pick]").forEach(el => {
     el.addEventListener("click", () => handleCocoPick(el.getAttribute("data-coco-pick")));
